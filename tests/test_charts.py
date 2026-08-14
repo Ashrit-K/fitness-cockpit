@@ -7,6 +7,9 @@ import volume
 @pytest.fixture
 def agg(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    json.dump({"records": []}, open("history.json", "w"))
+    json.dump({"exercises": []}, open("custom_exercises.json", "w"))
+    json.dump({}, open("muscle_map.json", "w"))
     return volume
 
 

@@ -54,20 +54,14 @@ def monday(d):
 def _tonnage(sets):
     return sum(s["reps"] * s["weight_kg"] for s in sets)
 
-def _load_json(path, default):
-    try:
-        with open(path) as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return default
-
-
 def aggregate(history_path="history.json", custom_path="custom_exercises.json",
               map_path="muscle_map.json", now=None):
-    records = _load_json(history_path, {"records": []})["records"]
-    customs = {e["name"]: e
-               for e in _load_json(custom_path, {"exercises": []})["exercises"]}
-    builtins = _load_json(map_path, {})
+    with open(history_path) as f:
+        records = json.load(f)["records"]
+    with open(custom_path) as f:
+        customs = {e["name"]: e for e in json.load(f)["exercises"]}
+    with open(map_path) as f:
+        builtins = json.load(f)
 
     if now is None:
         now = datetime.now(timezone.utc).date()
@@ -128,6 +122,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+
+plt.style.use("seaborn-v0_8-whitegrid")
 
 GROUP_COLORS = {
     "Chest": "#c53030", "Back": "#2b6cb0", "Shoulders": "#dd6b20",
