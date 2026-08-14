@@ -170,6 +170,31 @@
   }
   .meter.key { border-color: color-mix(in srgb, var(--accent) 55%, var(--edge)); }
 
+  /* ---------- compact readout row ---------- */
+  .readout {
+    display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 10px;
+    font-family: var(--mono); font-size: 10px;
+  }
+  .readout > span { display: inline-flex; flex-direction: column; gap: 2px; }
+  .readout i { font-style: normal; letter-spacing: .1em; text-transform: uppercase;
+               color: var(--muted); }
+  .readout b { font-size: 13px; font-weight: 620; color: var(--ink); }
+  .readout b.up { color: var(--bad); } .readout b.down { color: var(--good); }
+
+  /* ---------- lift rows inside a pattern card ---------- */
+  .lifts { margin: 10px 0 0; border-top: 1px solid var(--grid); }
+  .lift {
+    display: flex; align-items: baseline; gap: 10px; padding: 6px 0;
+    border-bottom: 1px solid var(--grid); font-size: 12px;
+  }
+  .lift .nm { color: var(--ink-2); flex: 1 1 auto; min-width: 0;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lift .kg { font-family: var(--mono); color: var(--ink); }
+  .lift .dt { font-family: var(--mono); width: 62px; text-align: right; }
+  .lift .dt.up { color: var(--good); } .lift .dt.dn { color: var(--bad); }
+  .lifts .none { font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+                 padding: 8px 0; }
+
   /* ---------- legend, scale, tooltip ---------- */
   .legend {
     display: flex; flex-wrap: wrap; gap: 5px 16px; margin: 0 0 10px;
@@ -261,6 +286,7 @@
     <span class="rl"><span>SETS/WK</span><b id="rail-sets">—</b></span>
     <span class="rl"><span>SESSIONS/WK</span><b id="rail-sess">—</b></span>
     <span class="rl"><span>LAST</span><b id="rail-last">—</b></span>
+    <span class="rl"><span>UPDATED</span><b id="rail-upd">—</b></span>
     <span class="spacer"></span>
     <button class="theme" id="theme" type="button">light</button>
   </div>
@@ -330,11 +356,12 @@
   <div class="grid">
     <div class="card p3"><div class="kpi" id="kpi-hold"></div></div>
     <div class="card p9 flush">
-      <p class="card-h">Best e1RM, last 8 weeks vs the 12 months before
-        <span class="r">free weights only</span></p>
-      <div id="watch"></div>
+      <p class="card-h">Delt heads <span class="r">sets per week · direct work and indirect stimulus</span></p>
+      <div class="legend" id="legend-delts"></div>
+      <div id="delts"></div>
     </div>
   </div>
+  <div class="grid" id="patterns"></div>
 
   <p class="band">History</p>
   <div class="grid">
@@ -589,6 +616,17 @@
     h.innerHTML = '<div class="k">' + t.k + '</div><div class="v' + (t.c ? " " + t.c : "") +
       '">' + t.v + (t.u ? "<small>" + t.u + "</small>" : "") +
       '</div><div class="n">' + t.n + "</div>";
+  }
+  function readout(host, items) {
+    var h = document.getElementById(host);
+    if (!h) return;
+    h.innerHTML = "";
+    items.forEach(function (it) {
+      var s = document.createElement("span");
+      s.innerHTML = "<i>" + it.k + "</i><b" + (it.c ? ' class="' + it.c + '"' : "") +
+        ">" + it.v + "</b>";
+      h.appendChild(s);
+    });
   }
   function rampScale(host, lead, tail) {
     document.getElementById(host).innerHTML = lead +
@@ -1067,37 +1105,139 @@
 
   /* ============================================================ STRENGTH */
 
-  function watchChart(watch) {
-    var W = 820, RH = 30, L = 220, R = 108, T = 24;
-    var H = T + watch.length * RH + 12;
-    var pw = W - L - R;
-    var s = svg("watch", W, H);
-    s.setAttribute("aria-label", "Recent best estimated 1RM against the year before");
-    var span = Math.max(10, Math.ceil(Math.max.apply(null, watch.map(function (w) {
-      return Math.abs(w.delta_pct);
-    })) / 5) * 5);
-    var mid = L + pw / 2;
-    function X(pct) { return mid + pct / span * (pw / 2); }
-    [-span, -span / 2, 0, span / 2, span].forEach(function (v) {
-      s.appendChild(el("line", { x1: X(v), x2: X(v), y1: T - 6, y2: T + watch.length * RH,
-                                 stroke: v === 0 ? "var(--rule)" : "var(--grid)" }));
-      s.appendChild(el("text", { x: X(v), y: T - 11, class: "tick", "text-anchor": "middle" },
-        (v > 0 ? "+" : "") + v + "%"));
-    });
-    watch.forEach(function (w, i) {
-      var y = T + i * RH;
-      s.appendChild(el("text", { x: 0, y: y + RH / 2 + 4, class: "axlab" },
-        w.name.length > 32 ? w.name.slice(0, 31) + "…" : w.name));
-      var x0 = X(0), x1 = X(w.delta_pct);
+  /* Weekly sets for one pattern, with the 12-week mean drawn behind. */
+  function patternChart(host, p) {
+    var W = 560, H = 132, L = 30, R = 8, T = 12, B = 20;
+    var pw = W - L - R, ph = H - T - B;
+    var s = svg(host, W, H);
+    s.setAttribute("aria-label", "Weekly sets for " + p.label);
+    var ax = niceAxis(Math.max.apply(null, p.sets.concat([4])), 2);
+    yAxis(s, L, R, W, T, ph, ax.ticks, ax.top);
+    var slot = pw / p.sets.length, bw = Math.max(slot - 4, 3);
+    p.sets.forEach(function (v, i) {
+      var h = v / ax.top * ph;
+      var last = i === p.sets.length - 1;
       s.appendChild(tipOn(el("rect", {
-        x: Math.min(x0, x1), y: y + 6, width: Math.max(Math.abs(x1 - x0), 2),
-        height: RH - 12, rx: 2, fill: w.delta_pct >= 0 ? "var(--good)" : "var(--bad)"
-      }), tk(w.name) + tv("<b>" + fmt1(w.now) + " kg</b> best in the last 8 weeks<br>" +
-             fmt1(w.base) + " kg best in the 12 months before<br>" + w.days + " sessions")));
-      s.appendChild(el("text", {
-        x: W - 2, y: y + RH / 2 + 4, class: "dlab", "text-anchor": "end",
-        fill: w.delta_pct >= 0 ? "var(--good)" : "var(--bad)"
-      }, (w.delta_pct >= 0 ? "+" : "") + fmt1(w.delta_pct) + "%  " + fmt1(w.now) + " kg"));
+        x: L + slot * i + (slot - bw) / 2, y: T + ph - h, width: bw,
+        height: Math.max(h, 1.5), rx: 2,
+        fill: v === 0 ? "var(--grid)" : "var(--series-1)",
+        "fill-opacity": v === 0 ? 1 : last ? 1 : 0.45
+      }), tk(p.label + " · week of " + shortDate(p.weeks[i])) +
+         tv("<b>" + v + " sets</b> · " + fmt(p.reps[i]) + " reps" +
+            (p.tonnage[i] ? " · " + fmt(p.tonnage[i]) + " kg" : "") +
+            (p.best_reps[i] ? "<br>best unloaded set " + p.best_reps[i] + " reps" : ""))));
+    });
+    var my = T + ph - p.sets_mean / ax.top * ph;
+    s.appendChild(el("line", { x1: L, x2: W - R, y1: my, y2: my, stroke: "var(--ink-2)",
+      "stroke-width": 1, "stroke-dasharray": "4 4" }));
+    s.appendChild(el("text", { x: L + 3, y: Math.max(my - 4, T + 8), class: "tick" },
+      "12-wk mean " + fmt1(p.sets_mean)));
+    s.appendChild(el("text", { x: L, y: H - 6, class: "tick" }, shortDate(p.weeks[0])));
+    s.appendChild(el("text", { x: W - R, y: H - 6, class: "tick", "text-anchor": "end" },
+      shortDate(p.weeks[p.weeks.length - 1])));
+    s.appendChild(el("line", { x1: L, x2: W - R, y1: T + ph, y2: T + ph, class: "baseline" }));
+  }
+
+  function patternCards(pats) {
+    var host = document.getElementById("patterns");
+    host.innerHTML = "";
+    pats.forEach(function (p) {
+      var card = document.createElement("div");
+      card.className = "card p6 flush";
+      card.innerHTML = '<p class="card-h">' + p.label + '<span class="r">' + p.note +
+        '</span></p><div class="readout" id="ro-' + p.key + '"></div>' +
+        '<div id="fig-' + p.key + '"></div><div class="lifts" id="lifts-' + p.key + '"></div>';
+      host.appendChild(card);
+
+      var move = p.sets_now - p.sets_prev;
+      var items = [
+        { k: "Sets this week", v: p.sets_now,
+          c: p.sets_now >= p.sets_mean ? "down" : "up" },
+        { k: "Last week", v: p.sets_prev },
+        { k: "On the week", v: delta(move) },
+        { k: "12-week mean", v: fmt1(p.sets_mean) },
+        { k: "Reps this week", v: fmt(p.reps[p.reps.length - 1]) }
+      ];
+      if (p.best_unloaded_reps) {
+        items.push({ k: "Best unloaded set", v: p.best_reps[p.best_reps.length - 1] ||
+          p.best_unloaded_reps });
+      }
+      readout("ro-" + p.key, items);
+      patternChart("fig-" + p.key, p);
+
+      var box = document.getElementById("lifts-" + p.key);
+      if (!p.lifts.length) {
+        box.innerHTML = '<p class="none">no lift here has enough loaded sessions in ' +
+          'both windows to compare</p>';
+        return;
+      }
+      p.lifts.forEach(function (l) {
+        var row = document.createElement("div");
+        row.className = "lift";
+        row.innerHTML = '<span class="nm">' + l.name + '</span>' +
+          '<span class="kg">' + fmt1(l.now) + ' kg</span>' +
+          '<span class="dt ' + (l.delta_pct >= 0 ? "up" : "dn") + '">' +
+          (l.delta_pct >= 0 ? "+" : "") + fmt1(l.delta_pct) + '%</span>';
+        tipOn(row, tk(l.name) + tv("<b>" + fmt1(l.now) + " kg</b> best e1RM in the last 8 weeks<br>" +
+          fmt1(l.base) + " kg best in the 12 months before<br>" + l.days + " sessions"));
+        box.appendChild(row);
+      });
+    });
+  }
+
+  /* Each delt head: direct work solid, indirect stimulus faded behind it. */
+  function deltChart(d) {
+    legend("legend-delts", [
+      { l: "direct sets", c: "var(--series-2)" },
+      { l: "indirect stimulus", c: "color-mix(in srgb, var(--series-2) 38%, transparent)" }
+    ]);
+    var heads = d.heads, n = heads.length;
+    var PW = 268, PH = 150, GX = 8;
+    var W = n * PW + (n - 1) * GX;
+    var s = svg("delts", W, PH);
+    s.setAttribute("aria-label", "Weekly sets per delt head");
+    var top = niceAxis(Math.max.apply(null, heads.map(function (h) {
+      return Math.max.apply(null, h.direct.map(function (v, i) { return v + h.indirect[i]; }));
+    })), 2).top;
+
+    heads.forEach(function (h, k) {
+      var L = 28, R = 6, T = 34, B = 18;
+      var pw = PW - L - R, ph = PH - T - B;
+      var g = el("g", { transform: "translate(" + k * (PW + GX) + ",0)" });
+      g.appendChild(el("text", { x: 0, y: 11, class: "axlab" }, h.label + " delt"));
+      g.appendChild(el("text", { x: 0, y: 26, class: "dlab", fill: "var(--ink-2)" },
+        h.direct_now + " direct" + (h.indirect_now ? " · " + h.indirect_now + " indirect" : "") +
+        " · " + delta(h.direct_now - h.direct_prev)));
+      [0, top / 2, top].forEach(function (v) {
+        var y = T + ph - v / top * ph;
+        g.appendChild(el("line", { x1: L, x2: PW - R, y1: y, y2: y, class: "gridline" }));
+        g.appendChild(el("text", { x: L - 5, y: y + 3.5, class: "tick",
+          "text-anchor": "end" }, fmt(v)));
+      });
+      var slot = pw / h.direct.length, bw = Math.max(slot - 3, 2);
+      h.direct.forEach(function (v, i) {
+        var ind = h.indirect[i];
+        var x = L + slot * i + (slot - bw) / 2;
+        var hd = v / top * ph, hi = ind / top * ph;
+        if (ind > 0) {
+          g.appendChild(el("rect", { x: x, y: T + ph - hd - hi, width: bw,
+            height: Math.max(hi - 1, 0.5), rx: 1.5, fill: "var(--series-2)",
+            "fill-opacity": 0.38 }));
+        }
+        if (v > 0) {
+          g.appendChild(el("rect", { x: x, y: T + ph - hd, width: bw,
+            height: Math.max(hd, 1), rx: 1.5, fill: "var(--series-2)" }));
+        }
+        g.appendChild(tipOn(el("rect", { x: L + slot * i, y: T, width: slot, height: ph,
+          class: "hit" }), tk(h.label + " delt · week of " + shortDate(d.weeks[i])) +
+          tv("<b>" + v + "</b> direct sets<br>" + ind + " indirect sets")));
+      });
+      g.appendChild(el("line", { x1: L, x2: PW - R, y1: T + ph, y2: T + ph,
+        class: "baseline" }));
+      g.appendChild(el("text", { x: L, y: PH - 5, class: "tick" }, shortDate(d.weeks[0])));
+      g.appendChild(el("text", { x: PW - R, y: PH - 5, class: "tick", "text-anchor": "end" },
+        shortDate(d.weeks[d.weeks.length - 1])));
+      s.appendChild(g);
     });
   }
 
@@ -1469,14 +1609,18 @@
     draw("session-tonnage", function () { sessionTonnage(D.recent); });
     draw("fig-targets", function () { targetHeat(w, 8); });
 
-    draw("watch", function () {
-      if (!D.watch.length) throw new Error("no lift has data in both windows");
-      watchChart(D.watch);
-      var held = D.watch.filter(function (x) { return x.delta_pct >= 0; }).length;
-      kpi("kpi-hold", { k: "Lifts holding", v: held, u: "/ " + D.watch.length,
-        c: held === D.watch.length ? "good" : held >= D.watch.length / 2 ? "warn" : "bad",
-        n: "best " + D.watch[0].name + " " + (D.watch[0].delta_pct >= 0 ? "+" : "") +
-           fmt1(D.watch[0].delta_pct) + "%" });
+    draw("patterns", function () { patternCards(D.patterns); });
+    draw("delts", function () { deltChart(D.delts); });
+    draw("kpi-hold", function () {
+      var lifts = [];
+      D.patterns.forEach(function (p) { lifts = lifts.concat(p.lifts); });
+      if (!lifts.length) throw new Error("nothing comparable yet");
+      lifts.sort(function (a, b) { return b.delta_pct - a.delta_pct; });
+      var held = lifts.filter(function (x) { return x.delta_pct >= 0; }).length;
+      kpi("kpi-hold", { k: "Lifts holding", v: held, u: "/ " + lifts.length,
+        c: held === lifts.length ? "good" : held >= lifts.length / 2 ? "warn" : "bad",
+        n: "best " + lifts[0].name + " " + (lifts[0].delta_pct >= 0 ? "+" : "") +
+           fmt1(lifts[0].delta_pct) + "%" });
     });
 
     var m = D.meta;
@@ -1604,13 +1748,20 @@
       ["kpi-weight", "kpi-togo", "kpi-rate", "kpi-eta"].forEach(unavailable);
     });
 
+    /* the pipeline stamp, read in IST — the clock the log was recorded on */
     var up = new Date(D.updated_at);
-    txt("footer-updated", "Pipeline last ran " + longDate(up.toISOString().slice(0, 10)) +
+    var ist = new Date(up.getTime() + 5.5 * 3600000);
+    var stamp = ist.getUTCDate() + " " + MONTHS[ist.getUTCMonth()] + " " +
+      String(ist.getUTCHours()).padStart(2, "0") + ":" +
+      String(ist.getUTCMinutes()).padStart(2, "0") + " IST";
+    txt("rail-upd", stamp);
+    txt("footer-updated", "Pipeline last ran " + stamp +
         ". The page renders whatever the exports hold at load time.");
   }).catch(function () {
     ["gauge", "fig-cut", "fig-history", "meters", "fig-sets", "fig-tonnage", "sessions",
-     "session-tonnage", "fig-targets", "watch", "cal", "months", "sps", "bwshare",
-     "cats", "reps", "e1rm", "bwm", "life", "dow", "notes"].forEach(unavailable);
+     "session-tonnage", "fig-targets", "patterns", "delts", "cal", "months", "sps",
+     "bwshare", "cats", "reps", "e1rm", "bwm", "life", "dow", "notes"]
+      .forEach(unavailable);
   });
 })();
 </script>

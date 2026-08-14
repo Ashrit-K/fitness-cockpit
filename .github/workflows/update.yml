@@ -2,7 +2,10 @@ name: Update Weight Chart
 
 on:
   schedule:
-    - cron: "30 2 * * *"
+    # 15:00 IST and 19:00 IST — after a late-morning or an afternoon session.
+    # GitHub runs cron in UTC and can start a scheduled job several minutes late.
+    - cron: "30 9 * * *"
+    - cron: "30 13 * * *"
   workflow_dispatch:
 
 permissions:

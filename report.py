@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from groups import (BROAD_GROUPS, CATEGORIES, GROUP_TO_CATEGORY, VTAPER,
                     groups_for)
+from patterns import DELT_HEADS, PATTERNS
 from lifto_parse import parse_record, ParseError
 
 # Liftosaur strips the local offset and stores every timestamp as +00:00.
@@ -91,6 +92,10 @@ def tonnage(session):
 
 
 # --------------------------------------------------------------- sections
+
+def monday(d):
+    return d - timedelta(days=d.weekday())
+
 
 def meta(sessions, active_now, exercises):
     reps = sum(s["reps"] for ses in sessions for _, s in all_sets(ses))
@@ -263,12 +268,14 @@ def is_free_weight(name):
     return True
 
 
-def best_e1rm_by_day(sessions):
-    """name -> {date: best estimated 1RM that day}, free weights only."""
+def best_e1rm_by_day(sessions, machines=False):
+    """name -> {date: best estimated 1RM that day}."""
     days = defaultdict(dict)
     for ses in sessions:
         for name, s in all_sets(ses):
-            if not is_free_weight(name) or s["weight_kg"] <= 0 or s["reps"] > 15:
+            if not machines and not is_free_weight(name):
+                continue
+            if s["weight_kg"] <= 0 or s["reps"] > 15:
                 continue
             v = epley(s["weight_kg"], s["reps"])
             cur = days[name].get(ses["date"])
@@ -277,17 +284,23 @@ def best_e1rm_by_day(sessions):
     return days
 
 
-def strength_watch(sessions, now, limit=8):
-    """Recent best estimated 1RM against the year before, per free-weight lift.
+def strength_watch(sessions, now, limit=8, names=None, machines=False):
+    """Recent best estimated 1RM against the year before, per lift.
 
     This is the retention check for a cut: the recent window should hold its
     ground against the baseline, not fall away with the body weight.
+
+    Machines are excluded by default, because a stack number does not carry
+    between gyms. Pass machines=True when the comparison is a lift against its
+    own past on the same equipment, where the stack is a fair yardstick.
     """
-    days = best_e1rm_by_day(sessions)
+    days = best_e1rm_by_day(sessions, machines=machines)
     recent_from = now - timedelta(days=WATCH_DAYS)
     base_from = recent_from - timedelta(days=BASELINE_DAYS)
     out = []
     for name, by_day in days.items():
+        if names is not None and name not in names:
+            continue
         recent = [v for d, v in by_day.items() if d > recent_from]
         base = [v for d, v in by_day.items() if base_from < d <= recent_from]
         if len(recent) < MIN_WATCH_DAYS or len(base) < MIN_WATCH_DAYS:
@@ -302,6 +315,92 @@ def strength_watch(sessions, now, limit=8):
         })
     out.sort(key=lambda r: -r["delta_pct"])
     return out[:limit]
+
+
+def _weekly_buckets(sessions, weeks, now):
+    """Week-start dates for the last `weeks` weeks, and an index onto them."""
+    starts = [monday(now) - timedelta(weeks=weeks - 1 - i) for i in range(weeks)]
+    return starts, {w: i for i, w in enumerate(starts)}
+
+
+def pattern_series(sessions, now, weeks=12):
+    """Per movement pattern: weekly volume, plus each lift against its own past.
+
+    Volume answers "is the stimulus still there"; e1RM answers "is the strength
+    still there". A cut needs both, and for unloaded work only the first exists.
+    """
+    starts, idx = _weekly_buckets(sessions, weeks, now)
+    out = []
+    for spec in PATTERNS:
+        names = set(spec["names"])
+        sets = [0] * weeks
+        reps = [0] * weeks
+        tons = [0.0] * weeks
+        best = [0] * weeks     # best unloaded set that week — the pull-up yardstick
+        loaded = 0
+        for ses in sessions:
+            i = idx.get(monday(ses["date"]))
+            for name, s in all_sets(ses):
+                if name not in names:
+                    continue
+                if s["weight_kg"] > 0:
+                    loaded += 1
+                if i is None:
+                    continue
+                sets[i] += 1
+                reps[i] += s["reps"]
+                tons[i] += s["reps"] * s["weight_kg"]
+                if s["weight_kg"] == 0 and s["reps"] > best[i]:
+                    best[i] = s["reps"]
+        best_reps = max(best)
+
+        recent = sets[-2:] or [0]
+        base = sets[:-2] or [0]
+        out.append({
+            "key": spec["key"],
+            "label": spec["label"],
+            "note": spec["note"],
+            "weeks": [w.isoformat() for w in starts],
+            "sets": sets,
+            "reps": reps,
+            "tonnage": [round(t) for t in tons],
+            "sets_now": sets[-1],
+            "sets_prev": sets[-2] if weeks > 1 else 0,
+            "sets_mean": round(sum(base) / len(base), 1),
+            "unloaded": loaded == 0,
+            "best_reps": best,
+            "best_unloaded_reps": best_reps,
+            "lifts": strength_watch(sessions, now, limit=6,
+                                    names=names, machines=True),
+        })
+    return out
+
+
+def delt_heads(sessions, now, weeks=12):
+    """Weekly sets per delt head, split into direct work and indirect stimulus."""
+    starts, idx = _weekly_buckets(sessions, weeks, now)
+    heads = []
+    for spec in DELT_HEADS:
+        direct = set(spec["direct"])
+        indirect = set(spec["indirect"])
+        d = [0] * weeks
+        n = [0] * weeks
+        for ses in sessions:
+            i = idx.get(monday(ses["date"]))
+            if i is None:
+                continue
+            for name, _s in all_sets(ses):
+                if name in direct:
+                    d[i] += 1
+                elif name in indirect:
+                    n[i] += 1
+        heads.append({
+            "key": spec["key"], "label": spec["label"],
+            "direct": d, "indirect": n,
+            "direct_now": d[-1], "indirect_now": n[-1],
+            "direct_prev": d[-2] if weeks > 1 else 0,
+        })
+    return {"weeks": [w.isoformat() for w in starts], "heads": heads}
 
 
 def e1rm_panels(sessions, limit=6, window=5):
@@ -381,10 +480,6 @@ def dow_matrix(sessions):
         local = ses["local"]
         m[local.weekday()][local.hour] += 1
     return m
-
-
-def monday(d):
-    return d - timedelta(days=d.weekday())
 
 
 def weekly_volume(sessions, customs, builtins, weeks=26, now=None):
@@ -709,6 +804,8 @@ def build(records, weights, customs, builtins, now=None):
     vol = weekly_volume(sessions, customs, builtins, now=now)
     recent = recent_sessions(sessions, customs, builtins)
     watch = strength_watch(sessions, now)
+    pats = pattern_series(sessions, now)
+    delts = delt_heads(sessions, now)
 
     facts = build_facts(sessions, m, cal, lay, mon, yrs, cats, reps,
                         e1rm, bw, life, dow)
@@ -722,6 +819,8 @@ def build(records, weights, customs, builtins, now=None):
         "weekly": vol,
         "recent": recent,
         "watch": watch,
+        "patterns": pats,
+        "delts": delts,
         "vtaper": VTAPER,
         "groups": BROAD_GROUPS,
         "facts": facts,

@@ -3,3 +3,4 @@ __pycache__/
 .superpowers/
 .venv/
 tools/
+logs/
