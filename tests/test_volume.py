@@ -36,6 +36,9 @@ def test_aggregate_sets_and_tonnage(tmp_path):
     res = aggregate(history_path=hp, custom_path=cp, map_path=mp,
                     now=datetime(2026, 8, 14).date())
     i = -1  # last week = week containing 2026-08-11
+    assert "sessions" in res
+    assert len(res["sessions"]) == 8
+    assert res["sessions"][i] == 1  # fixture: one workout on 2026-08-11
     assert res["groups"]["Chest"][i] == 3
     assert res["groups"]["Back"][i] == 3
     assert res["groups"]["Triceps"][i] == 3

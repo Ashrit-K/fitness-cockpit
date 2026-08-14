@@ -71,6 +71,7 @@ def aggregate(history_path="history.json", custom_path="custom_exercises.json",
 
     groups = {g: [0] * 8 for g in BROAD_GROUPS}
     tonnage = {g: [0.0] * 8 for g in BROAD_GROUPS}
+    session_dates = {i: set() for i in range(8)}
     warnings = []
 
     for rec in records:
@@ -88,6 +89,7 @@ def aggregate(history_path="history.json", custom_path="custom_exercises.json",
         if wk not in week_idx:
             continue
         i = week_idx[wk]
+        session_dates[i].add(dt.date().isoformat())
         for ex in parsed["exercises"]:
             custom = customs.get(ex["name"])
             muscles = None
@@ -113,6 +115,7 @@ def aggregate(history_path="history.json", custom_path="custom_exercises.json",
         "weeks": [w.isoformat() for w in weeks],
         "groups": groups,
         "tonnage": tonnage,
+        "sessions": [len(session_dates[i]) for i in range(8)],
         "warnings": warnings,
     }
 
@@ -208,6 +211,7 @@ def main():
             "weeks": res["weeks"],
             "sets": res["sets"],
             "tonnage": res["tonnage"],
+            "sessions": res["sessions"],
             "warnings": sorted(set(res["warnings"])),
         }, f, indent=2)
     print("volume charts saved")

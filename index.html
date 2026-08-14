@@ -3,47 +3,552 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Weight Tracker</title>
+<title>Training log</title>
 <style>
-  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #fff; color: #222; margin: 0; padding: 24px; }
-  .wrap { max-width: 1200px; margin: 0 auto; }
-  h1 { font-size: 1.4rem; margin: 0 0 4px; }
-  h2 { font-size: 1.1rem; margin: 20px 0 8px; }
-  .meta { color: #666; font-size: 0.9rem; margin-bottom: 16px; }
-  img { max-width: 100%; height: auto; border: 1px solid #eee; }
+:root {
+  color-scheme: light;
+  --page:#f3f5f7; --surface:#fbfcfd; --ink:#0e1113; --ink-2:#4e545c;
+  --muted:#7d848d; --grid:#e3e7eb; --rule:#cdd3da;
+  --hairline:rgba(14,17,19,0.10); --accent:#2a78d6;
+  --good:#006300;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page:#0b0d0f; --surface:#16191c; --ink:#f2f4f6; --ink-2:#bcc2ca;
+    --muted:#8b9299; --grid:#24282d; --rule:#313640;
+    --hairline:rgba(255,255,255,0.12); --accent:#3987e5; --good:#0ca30c;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--page); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+
+header.masthead { padding: 56px 0 28px; border-bottom: 1px solid var(--rule); }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+h1 { font-size: clamp(34px, 5.4vw, 54px); font-weight: 680; letter-spacing: -0.028em; line-height: 1.04; margin: 0 0 14px; }
+.standfirst { font-size: 17px; color: var(--ink-2); line-height: 1.55; max-width: 58ch; margin: 0; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px 0; padding: 24px 0; border-bottom: 1px solid var(--rule); }
+@media (min-width: 1000px) { .stat + .stat { border-left: 1px solid var(--hairline); padding-left: 20px; } }
+.stat .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.stat .v { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stat .u { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; }
+
+section { padding: 52px 0 8px; border-bottom: 1px solid var(--rule); }
+h2 { font-size: clamp(21px, 2.7vw, 28px); font-weight: 640; letter-spacing: -0.02em; margin: 0 0 8px; }
+.deck { font-size: 15.5px; color: var(--ink-2); line-height: 1.6; max-width: 64ch; margin: 0 0 22px; }
+.figure { background: var(--surface); border: 1px solid var(--hairline); padding: 20px; overflow-x: auto; margin: 0 0 8px; }
+.cap { font-family: var(--mono); font-size: 11px; letter-spacing: .02em; color: var(--muted); margin: 0 0 38px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0 0; }
+.legend .item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.legend .item.off { opacity: .35; }
+.legend .sw { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+
+#tip { position: fixed; pointer-events: none; opacity: 0; transition: opacity .12s ease; background: var(--surface); border: 1px solid var(--hairline); box-shadow: 0 6px 24px rgba(0,0,0,.14); border-radius: 4px; padding: 8px 10px; font-size: 12.5px; line-height: 1.5; z-index: 50; max-width: 280px; font-variant-numeric: tabular-nums; }
+#tip .t { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+#tip .row { display: flex; justify-content: space-between; gap: 14px; }
+#tip .row .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+
+footer { font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.7; padding-top: 30px; }
+.unavail { color: var(--muted); font-size: 14px; padding: 20px 0 28px; }
+svg text { font-family: var(--mono); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Weight Tracker</h1>
-  <div class="meta">Last updated: <span id="updated">—</span> · Latest: <span id="latest">—</span> kg · Trend: <span id="trend">—</span> kg/week · Target: −0.45 kg/week</div>
 
-  <h2>Weight</h2>
-  <img src="chart.png" alt="Weight trend">
+  <header class="masthead">
+    <p class="eyebrow">Liftosaur · Auto-updated daily</p>
+    <h1>Training log</h1>
+    <p class="standfirst" id="standfirst">Body weight and training volume, rendered from the raw log.</p>
+  </header>
 
-  <h2>Volume — Sets</h2>
-  <img src="chart_sets.png" alt="Weekly sets by muscle group">
+  <div class="stats" id="stat-strip">
+    <div class="stat"><div class="k">Latest weight</div><div class="v" id="st-latest">—</div><div class="u" id="st-latest-sub"></div></div>
+    <div class="stat"><div class="k">Weight trend</div><div class="v" id="st-trend">—</div><div class="u">kg / week</div></div>
+    <div class="stat"><div class="k">Target</div><div class="v" id="st-target">—</div><div class="u">kg / week</div></div>
+    <div class="stat"><div class="k">Sets this week</div><div class="v" id="st-sets">—</div><div class="u">all muscle groups</div></div>
+    <div class="stat"><div class="k">Sessions this week</div><div class="v" id="st-sessions">—</div><div class="u">distinct workout days</div></div>
+    <div class="stat"><div class="k">Updated</div><div class="v" id="st-updated" style="font-size:20px;padding-top:6px;">—</div><div class="u" id="st-updated-sub"></div></div>
+  </div>
 
-  <h2>Volume — Tonnage</h2>
-  <img src="chart_tonnage.png" alt="Weekly tonnage by muscle group">
+  <section id="sec-weight">
+    <h2>Body weight</h2>
+    <p class="deck">Nearly a decade of weigh-ins, daily-averaged — plus the current cut window with dense reporting since August, set against the one-pound-per-week target.</p>
+    <div class="figure" id="fig-history"></div>
+    <p class="cap">FIG 1 — FULL HISTORY, DAILY AVERAGE · 2016 → PRESENT</p>
+    <div class="figure" id="fig-cut"></div>
+    <div class="legend" id="legend-cut"></div>
+    <p class="cap">FIG 2 — CUT WINDOW, JUL 2026 → PRESENT · DASHED: CURRENT TREND VS 1 LB/WK TARGET</p>
+  </section>
 
-  <h2>Sets vs Target</h2>
-  <img src="chart_targets.png" alt="Sets per muscle group vs 10-20 target">
+  <section id="sec-sets">
+    <h2>Volume — Sets</h2>
+    <p class="deck">Hard sets per muscle group per week, last eight weeks. Click a legend entry to exclude a group and rescale.</p>
+    <div class="figure" id="fig-sets"></div>
+    <div class="legend" id="legend-sets"></div>
+    <p class="cap">FIG 3 — WEEKLY SETS BY MUSCLE GROUP</p>
+  </section>
+
+  <section id="sec-tonnage">
+    <h2>Volume — Tonnage</h2>
+    <p class="deck">Sets × reps × weight, per muscle group per week. Same renderer, same legend behavior.</p>
+    <div class="figure" id="fig-tonnage"></div>
+    <div class="legend" id="legend-tonnage"></div>
+    <p class="cap">FIG 4 — WEEKLY TONNAGE (KG) BY MUSCLE GROUP</p>
+  </section>
+
+  <section id="sec-targets">
+    <h2>Sets vs Target</h2>
+    <p class="deck">Weekly sets against the 10–20 effective-sets band. Yellow is undertrained, green is in range, red is junk-volume territory.</p>
+    <div class="figure" id="fig-targets"></div>
+    <div class="legend" id="legend-targets"></div>
+    <p class="cap">FIG 5 — SETS PER GROUP PER WEEK VS 10–20 TARGET</p>
+  </section>
+
+  <footer id="footer">
+    Data: Liftosaur MCP exports (weights.json · volume_stats.json · stats.json). Figures render client-side in vanilla SVG; no libraries.<br>
+    <span id="footer-updated"></span>
+  </footer>
+
 </div>
+<div id="tip"></div>
+
 <script>
-fetch("stats.json").then(r => r.json()).then(s => {
-  document.getElementById("updated").textContent = s.updated_at.replace("T", " ");
-  document.getElementById("latest").textContent = s.latest_kg;
-  document.getElementById("trend").textContent = (s.trend_kg_per_week ?? 0).toFixed(2);
-}).catch(() => {});
-fetch("volume_stats.json").then(r => r.json()).then(v => {
-  if (v.warnings && v.warnings.length) {
-    const p = document.createElement("p");
-    p.className = "meta";
-    p.textContent = "Warnings: " + v.warnings.slice(0, 10).join("; ");
-    document.querySelector(".wrap").appendChild(p);
+(function () {
+"use strict";
+var SVGNS = "http://www.w3.org/2000/svg";
+var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var GROUPS = ["Chest","Back","Shoulders","Biceps","Triceps","Quads","Hamstrings","Glutes","Core","Calves"];
+var COLORS = {
+  Chest:"#c53030", Back:"#2a78d6", Shoulders:"#dd6b20", Biceps:"#2f855a",
+  Triceps:"#805ad5", Quads:"#3182ce", Hamstrings:"#d69e2e", Glutes:"#e53e3e",
+  Core:"#38a169", Calves:"#718096"
+};
+var CSS = function (name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
+
+function el(name, attrs, parent) {
+  var n = document.createElementNS(SVGNS, name);
+  if (attrs) for (var k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+
+var tip = document.getElementById("tip");
+function showTip(html, x, y) {
+  tip.innerHTML = html;
+  tip.style.opacity = "1";
+  var r = tip.getBoundingClientRect();
+  var lx = x + 14, ly = y + 14;
+  if (lx + r.width > window.innerWidth - 8) lx = x - r.width - 14;
+  if (ly + r.height > window.innerHeight - 8) ly = y - r.height - 14;
+  tip.style.left = lx + "px";
+  tip.style.top = ly + "px";
+}
+function hideTip() { tip.style.opacity = "0"; }
+
+function fmtLong(ms) {
+  var d = new Date(ms);
+  return MONTHS[d.getUTCMonth()] + " " + d.getUTCDate() + ", " + d.getUTCFullYear();
+}
+function fmtShort(ms) {
+  var d = new Date(ms);
+  return MONTHS[d.getUTCMonth()] + " " + d.getUTCDate();
+}
+function fmtTick(ms, spanDays) {
+  var d = new Date(ms);
+  if (spanDays > 700) return String(d.getUTCFullYear());
+  if (spanDays > 120) return MONTHS[d.getUTCMonth()] + " " + String(d.getUTCFullYear()).slice(2);
+  return MONTHS[d.getUTCMonth()] + " " + d.getUTCDate();
+}
+function fmtKg(v) { return v.toFixed(1); }
+function fmtTonnage(v) {
+  return Math.round(v).toLocaleString("en-US");
+}
+function parseKg(v) {
+  if (v.endsWith("kg")) return parseFloat(v);
+  if (v.endsWith("lb")) return parseFloat(v) * 0.453592;
+  return parseFloat(v);
+}
+function weekLabel(iso) {
+  var p = iso.split("-");
+  return MONTHS[parseInt(p[1], 10) - 1] + " " + parseInt(p[2], 10);
+}
+function loadJSON(url) {
+  return fetch(url).then(function (r) {
+    if (!r.ok) throw new Error(url + " " + r.status);
+    return r.json();
+  });
+}
+function unavailable(figId) {
+  var c = document.getElementById(figId);
+  if (c) c.innerHTML = '<p class="unavail">data unavailable</p>';
+}
+
+/* ---------- axes scaffolding ---------- */
+
+function axes(svg, x0, y0, x1, y1, yTicks, yFmt) {
+  var g = el("g", null, svg);
+  yTicks.forEach(function (t) {
+    el("line", { x1: x0, y1: t.py, x2: x1, y2: t.py, stroke: "var(--grid)", "stroke-width": 1 }, g);
+    var txt = el("text", { x: x0 - 8, y: t.py + 3, "text-anchor": "end", "font-size": 10, fill: "var(--muted)" }, g);
+    txt.textContent = yFmt(t.v);
+  });
+  el("line", { x1: x0, y1: y1, x2: x1, y2: y1, stroke: "var(--rule)", "stroke-width": 1 }, g);
+  return g;
+}
+
+function niceTicks(vmin, vmax, n) {
+  if (vmin === vmax) { vmin -= 1; vmax += 1; }
+  var span = vmax - vmin, step = span / (n - 1);
+  var mag = Math.pow(10, Math.floor(Math.log10(step)));
+  var norm = step / mag;
+  var nice = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10;
+  step = nice * mag;
+  var start = Math.ceil(vmin / step) * step, out = [];
+  for (var v = start; v <= vmax + 1e-9; v += step) out.push(v);
+  return out;
+}
+
+/* ---------- line chart with crosshair ---------- */
+
+function lineChart(figId, points, opts) {
+  opts = opts || {};
+  var c = document.getElementById(figId);
+  c.innerHTML = "";
+  var W = 1000, H = opts.height || 330;
+  var padL = 52, padR = 14, padT = 14, padB = 30;
+  var x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+  var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", height: "auto", role: "img" }, c);
+
+  var tMin = points[0].t, tMax = points[points.length - 1].t;
+  var kMin = Infinity, kMax = -Infinity;
+  points.forEach(function (p) { if (p.kg < kMin) kMin = p.kg; if (p.kg > kMax) kMax = p.kg; });
+
+  var WEEK = 7 * 864e5;
+  var trendSegs = [];
+  (opts.trendLines || []).forEach(function (tl) {
+    var tx0 = tl.from, tx1 = tMax;
+    var ky0 = tl.anchorKg + tl.rate * (tx0 - tl.anchorT) / WEEK;
+    var ky1 = tl.anchorKg + tl.rate * (tx1 - tl.anchorT) / WEEK;
+    trendSegs.push({ x0: tx0, x1: tx1, y0: ky0, y1: ky1, color: tl.color, dash: tl.dash });
+    if (ky0 < kMin) kMin = ky0; if (ky0 > kMax) kMax = ky0;
+    if (ky1 < kMin) kMin = ky1; if (ky1 > kMax) kMax = ky1;
+  });
+
+  var pad = (kMax - kMin) * 0.06 || 1;
+  kMin -= pad; kMax += pad;
+
+  function X(t) { return x0 + (t - tMin) / (tMax - tMin || 1) * (x1 - x0); }
+  function Y(kg) { return y1 - (kg - kMin) / (kMax - kMin) * (y1 - y0); }
+
+  var yTicks = niceTicks(kMin, kMax, 6).map(function (v) { return { v: v, py: Y(v) }; });
+  axes(svg, x0, y0, x1, y1, yTicks, function (v) { return v.toFixed(0); });
+
+  var spanDays = (tMax - tMin) / 864e5;
+  var nXT = Math.max(2, Math.min(8, Math.floor((x1 - x0) / 110)));
+  for (var i = 0; i < nXT; i++) {
+    var tv = tMin + (tMax - tMin) * i / (nXT - 1);
+    var xt = el("text", { x: X(tv), y: y1 + 20, "text-anchor": "middle", "font-size": 10, fill: "var(--muted)" }, svg);
+    xt.textContent = fmtTick(tv, spanDays);
   }
-}).catch(() => {});
+
+  trendSegs.forEach(function (s) {
+    el("line", {
+      x1: X(s.x0), y1: Y(s.y0), x2: X(s.x1), y2: Y(s.y1),
+      stroke: s.color, "stroke-width": 2, "stroke-dasharray": s.dash, "stroke-linecap": "round"
+    }, svg);
+  });
+
+  var dAttr = points.map(function (p, i) {
+    return (i ? "L" : "M") + X(p.t).toFixed(2) + " " + Y(p.kg).toFixed(2);
+  }).join(" ");
+  el("path", { d: dAttr, fill: "none", stroke: "var(--accent)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+
+  var showDots = points.length <= 120;
+  if (showDots) points.forEach(function (p) {
+    el("circle", { cx: X(p.t), cy: Y(p.kg), r: 2.4, fill: "var(--accent)" }, svg);
+  });
+
+  var guide = el("line", { y1: y0, y2: y1, stroke: "var(--muted)", "stroke-width": 1, "stroke-dasharray": "3 3", opacity: 0 }, svg);
+  var mark = el("circle", { r: 4.5, fill: "var(--surface)", stroke: "var(--accent)", "stroke-width": 2, opacity: 0 }, svg);
+
+  var hit = el("rect", { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: "transparent" }, svg);
+  hit.addEventListener("mousemove", function (ev) {
+    var rect = svg.getBoundingClientRect();
+    var mx = (ev.clientX - rect.left) / rect.width * W;
+    var mt = tMin + (mx - x0) / (x1 - x0) * (tMax - tMin);
+    var best = points[0], bd = Infinity;
+    for (var i = 0; i < points.length; i++) {
+      var dd = Math.abs(points[i].t - mt);
+      if (dd < bd) { bd = dd; best = points[i]; }
+    }
+    guide.setAttribute("x1", X(best.t)); guide.setAttribute("x2", X(best.t));
+    guide.setAttribute("opacity", 1);
+    mark.setAttribute("cx", X(best.t)); mark.setAttribute("cy", Y(best.kg));
+    mark.setAttribute("opacity", 1);
+    showTip('<div class="t">' + fmtLong(best.t) + '</div><div><b>' + fmtKg(best.kg) + " kg</b></div>", ev.clientX, ev.clientY);
+  });
+  hit.addEventListener("mouseout", function () {
+    guide.setAttribute("opacity", 0);
+    mark.setAttribute("opacity", 0);
+    hideTip();
+  });
+}
+
+/* ---------- stacked bars with toggleable legend ---------- */
+
+function stackedBars(figId, legendId, weeks, data, fmtVal, unitLabel) {
+  var fig = document.getElementById(figId);
+  var legendEl = document.getElementById(legendId);
+  var hidden = {};
+  var items = {};
+
+  GROUPS.forEach(function (g) {
+    var it = document.createElement("div");
+    it.className = "item";
+    var sw = document.createElement("span");
+    sw.className = "sw";
+    sw.style.background = COLORS[g];
+    var lb = document.createElement("span");
+    lb.textContent = g;
+    it.appendChild(sw); it.appendChild(lb);
+    it.addEventListener("click", function () {
+      hidden[g] = !hidden[g];
+      it.classList.toggle("off", !!hidden[g]);
+      render();
+    });
+    legendEl.appendChild(it);
+    items[g] = it;
+  });
+
+  function render() {
+    fig.innerHTML = "";
+    var W = 1000, H = 340, padL = 56, padR = 14, padT = 14, padB = 34;
+    var x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", height: "auto", role: "img" }, fig);
+    var n = weeks.length;
+    var totals = [];
+    var maxTotal = 0;
+    for (var i = 0; i < n; i++) {
+      var t = 0;
+      GROUPS.forEach(function (g) { if (!hidden[g]) t += data[g][i]; });
+      totals.push(t);
+      if (t > maxTotal) maxTotal = t;
+    }
+    if (maxTotal <= 0) maxTotal = 1;
+    var yTicks = niceTicks(0, maxTotal, 6).map(function (v) { return { v: v, py: y1 - v / maxTotal * (y1 - y0) }; });
+    axes(svg, x0, y0, x1, y1, yTicks, function (v) {
+      return maxTotal >= 20000 ? (v / 1000).toFixed(0) + "k" : fmtVal(v);
+    });
+
+    var slot = (x1 - x0) / n;
+    var bw = slot * 0.66;
+    for (var w = 0; w < n; w++) {
+      var cx = x0 + slot * w + slot / 2;
+      var acc = 0;
+      GROUPS.forEach(function (g) {
+        if (hidden[g]) return;
+        var v = data[g][w];
+        if (v <= 0) return;
+        var h0 = acc / maxTotal * (y1 - y0);
+        var h1 = (acc + v) / maxTotal * (y1 - y0);
+        el("rect", {
+          x: cx - bw / 2, y: y1 - h1, width: bw, height: Math.max(0, h1 - h0),
+          fill: COLORS[g]
+        }, svg);
+        acc += v;
+      });
+      var xt = el("text", { x: cx, y: y1 + 20, "text-anchor": "middle", "font-size": 10, fill: "var(--muted)" }, svg);
+      xt.textContent = weekLabel(weeks[w]);
+
+      (function (wi, cx2) {
+        var hit = el("rect", { x: cx2 - slot / 2, y: y0, width: slot, height: y1 - y0, fill: "transparent" }, svg);
+        hit.addEventListener("mousemove", function (ev) {
+          var html = '<div class="t">Week of ' + weekLabel(weeks[wi]) + '</div>';
+          GROUPS.forEach(function (g) {
+            if (hidden[g]) return;
+            var v = data[g][wi];
+            if (v <= 0) return;
+            html += '<div class="row"><span><span class="dot" style="background:' + COLORS[g] + '"></span>' + g +
+                    '</span><span><b>' + fmtVal(v) + "</b>" + unitLabel + "</span></div>";
+          });
+          html += '<div class="row" style="border-top:1px solid var(--hairline);margin-top:3px;padding-top:3px;"><span>Total</span><span><b>' +
+                  fmtVal(totals[wi]) + "</b>" + unitLabel + "</span></div>";
+          showTip(html, ev.clientX, ev.clientY);
+        });
+        hit.addEventListener("mouseout", hideTip);
+      })(w, cx);
+    }
+  }
+  render();
+}
+
+/* ---------- heatmap ---------- */
+
+function heatmap(figId, legendId, weeks, sets) {
+  var fig = document.getElementById(figId);
+  fig.innerHTML = "";
+  var C_BELOW = "#f6e05e", C_IN = "#48bb78", C_ABOVE = "#fc8181";
+  var legendEl = document.getElementById(legendId);
+  legendEl.innerHTML = "";
+  [[C_BELOW, "below 10 — undertrained"], [C_IN, "10–20 — in range"], [C_ABOVE, "above 20 — too much"]].forEach(function (b) {
+    var it = document.createElement("div");
+    it.className = "item";
+    it.style.cursor = "default";
+    var sw = document.createElement("span");
+    sw.className = "sw"; sw.style.background = b[0];
+    var lb = document.createElement("span"); lb.textContent = b[1];
+    it.appendChild(sw); it.appendChild(lb);
+    legendEl.appendChild(it);
+  });
+
+  var rows = GROUPS.length, cols = weeks.length;
+  var labelW = 96, headH = 30;
+  var cellW = Math.min(108, (1000 - labelW) / cols), cellH = 40;
+  var W = labelW + cellW * cols + 6, H = headH + cellH * rows + 6;
+  var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", height: "auto", role: "img" }, fig);
+
+  for (var c = 0; c < cols; c++) {
+    var xt = el("text", {
+      x: labelW + cellW * c + cellW / 2, y: headH - 10,
+      "text-anchor": "middle", "font-size": 10, fill: "var(--muted)"
+    }, svg);
+    xt.textContent = weekLabel(weeks[c]);
+  }
+  for (var r = 0; r < rows; r++) {
+    var g = GROUPS[r];
+    var yt = el("text", {
+      x: labelW - 10, y: headH + cellH * r + cellH / 2 + 3,
+      "text-anchor": "end", "font-size": 11.5, fill: "var(--ink-2)",
+      "font-family": "var(--sans)"
+    }, svg);
+    yt.textContent = g;
+    for (var cc = 0; cc < cols; cc++) {
+      var v = sets[g][cc];
+      var fill = v < 10 ? C_BELOW : v <= 20 ? C_IN : C_ABOVE;
+      var band = v < 10 ? "below target" : v <= 20 ? "in target range" : "above target";
+      var x = labelW + cellW * cc, y = headH + cellH * r;
+      el("rect", {
+        x: x + 1.5, y: y + 1.5, width: cellW - 3, height: cellH - 3,
+        rx: 3, fill: fill
+      }, svg);
+      var vt = el("text", {
+        x: x + cellW / 2, y: y + cellH / 2 + 4, "text-anchor": "middle",
+        "font-size": 11.5, fill: "#1a202c", "font-weight": 600
+      }, svg);
+      vt.textContent = v;
+      (function (g2, v2, cc2, band2) {
+        var hit = el("rect", { x: x, y: y, width: cellW, height: cellH, fill: "transparent" }, svg);
+        hit.addEventListener("mousemove", function (ev) {
+          showTip('<div class="t">' + g2 + ' · week of ' + weekLabel(weeks[cc2]) + '</div><div><b>' +
+                  v2 + " sets</b> · " + band2 + "</div>", ev.clientX, ev.clientY);
+        });
+        hit.addEventListener("mouseout", hideTip);
+      })(g, v, cc, band);
+    }
+  }
+}
+
+/* ---------- data wiring ---------- */
+
+loadJSON("stats.json").then(function (s) {
+  var latest = document.getElementById("st-latest");
+  latest.textContent = s.latest_kg.toFixed(1);
+  document.getElementById("st-latest-sub").textContent =
+    "kg · " + fmtLong(new Date(s.latest_date).getTime());
+  var trend = s.trend_kg_per_week;
+  var tEl = document.getElementById("st-trend");
+  tEl.textContent = (trend < 0 ? "−" : "+") + Math.abs(trend).toFixed(2);
+  tEl.style.color = trend < 0 ? "var(--good)" : "#c53030";
+  document.getElementById("st-target").textContent =
+    "−" + Math.abs(s.target_kg_per_week).toFixed(2);
+  var h0 = new Date(s.history_start), h1 = new Date(s.latest_date);
+  document.getElementById("standfirst").textContent =
+    "Body weight and training volume from " + MONTHS[h0.getMonth()] + " " + h0.getFullYear() +
+    " to " + fmtLong(h1.getTime()) + " — full history, the current cut window, and eight weeks of per-muscle volume.";
+  var up = new Date(s.updated_at);
+  document.getElementById("st-updated").textContent = fmtShort(up.getTime());
+  document.getElementById("st-updated-sub").textContent = up.getFullYear() + " · daily pipeline";
+}).catch(function () {});
+
+loadJSON("weights.json").then(function (w) {
+  var byDay = {};
+  w.values.forEach(function (v) {
+    var kg = parseKg(v.value);
+    if (!isFinite(kg)) return;
+    var day = v.date.slice(0, 10);
+    if (!byDay[day]) byDay[day] = { sum: 0, n: 0 };
+    byDay[day].sum += kg; byDay[day].n += 1;
+  });
+  var points = Object.keys(byDay).sort().map(function (day) {
+    var p = day.split("-");
+    return {
+      t: Date.UTC(+p[0], +p[1] - 1, +p[2]),
+      kg: byDay[day].sum / byDay[day].n
+    };
+  });
+  if (!points.length) throw new Error("no points");
+  lineChart("fig-history", points);
+
+  var cut = points.filter(function (p) { return p.t >= Date.UTC(2026, 6, 1); });
+  if (cut.length >= 2) {
+    loadJSON("stats.json").then(function (s) {
+      var anchorT = new Date(s.latest_date).getTime();
+      var denseT = new Date(s.dense_start).getTime();
+      lineChart("fig-cut", cut, {
+        height: 300,
+        trendLines: [
+          { from: denseT, anchorT: anchorT, anchorKg: s.latest_kg, rate: s.trend_kg_per_week, color: "var(--accent)", dash: "6 4" },
+          { from: denseT, anchorT: anchorT, anchorKg: s.latest_kg, rate: s.target_kg_per_week, color: "var(--good)", dash: "2 4" }
+        ]
+      });
+      var lg = document.getElementById("legend-cut");
+      [["var(--accent)", "current trend (" + s.trend_kg_per_week.toFixed(2) + " kg/wk)"],
+       ["var(--good)", "target (−0.45 kg/wk ≈ 1 lb/wk)"]].forEach(function (b) {
+        var it = document.createElement("div");
+        it.className = "item"; it.style.cursor = "default";
+        var sw = document.createElement("span");
+        sw.className = "sw";
+        sw.style.background = b[0];
+        var lb = document.createElement("span");
+        lb.textContent = b[1];
+        it.appendChild(sw); it.appendChild(lb);
+        lg.appendChild(it);
+      });
+    }).catch(function () { lineChart("fig-cut", cut, { height: 300 }); });
+  } else {
+    unavailable("fig-cut");
+  }
+}).catch(function () {
+  unavailable("fig-history");
+  unavailable("fig-cut");
+});
+
+loadJSON("volume_stats.json").then(function (v) {
+  var last = v.weeks.length - 1;
+  var totalSets = 0;
+  GROUPS.forEach(function (g) { totalSets += (v.sets[g] || [])[last] || 0; });
+  document.getElementById("st-sets").textContent = totalSets;
+  if (v.sessions) document.getElementById("st-sessions").textContent = v.sessions[last];
+
+  stackedBars("fig-sets", "legend-sets", v.weeks, v.sets, function (x) { return x; }, "");
+  stackedBars("fig-tonnage", "legend-tonnage", v.weeks, v.tonnage, fmtTonnage, " kg");
+  heatmap("fig-targets", "legend-targets", v.weeks, v.sets);
+
+  var up = new Date(v.updated_at);
+  document.getElementById("footer-updated").textContent =
+    "Pipeline updated " + fmtLong(up.getTime()) + " · page renders whatever the JSONs contain at load time.";
+}).catch(function () {
+  ["fig-sets", "fig-tonnage", "fig-targets"].forEach(unavailable);
+});
+
+})();
 </script>
 </body>
 </html>
