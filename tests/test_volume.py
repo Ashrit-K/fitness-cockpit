@@ -1,5 +1,6 @@
 import json
 import pytest
+from datetime import datetime
 from volume import aggregate, BROAD_GROUPS
 
 def write(tmp, name, obj):
@@ -32,7 +33,8 @@ def test_aggregate_sets_and_tonnage(tmp_path):
         "Bench Press": ["Pectoralis Major Sternal Head", "Triceps Brachii", "Deltoid Anterior"],
         "Lat Pulldown": ["Latissimus Dorsi", "Biceps Brachii"],
     })
-    res = aggregate(history_path=hp, custom_path=cp, map_path=mp)
+    res = aggregate(history_path=hp, custom_path=cp, map_path=mp,
+                    now=datetime(2026, 8, 14).date())
     i = -1  # last week = week containing 2026-08-11
     assert res["groups"]["Chest"][i] == 3
     assert res["groups"]["Back"][i] == 3
@@ -51,7 +53,8 @@ def test_warmup_excluded(tmp_path):
         "Lat Pulldown": ["Latissimus Dorsi"],
         "Mystery Lift": ["Latissimus Dorsi"],
     })
-    res = aggregate(history_path=hp, custom_path=cp, map_path=mp)
+    res = aggregate(history_path=hp, custom_path=cp, map_path=mp,
+                    now=datetime(2026, 8, 14).date())
     assert res["groups"]["Back"][-1] == 5  # 3 pulldown + 2 mystery, no warmup
     assert res["groups"]["Chest"][-1] == 3
 
@@ -63,5 +66,27 @@ def test_unmapped_warning(tmp_path):
         "Bench Press": ["Pectoralis Major Sternal Head"],
         "Lat Pulldown": ["Latissimus Dorsi"],
     })
-    res = aggregate(history_path=hp, custom_path=cp, map_path=mp)
+    res = aggregate(history_path=hp, custom_path=cp, map_path=mp,
+                    now=datetime(2026, 8, 14).date())
     assert any("Mystery Lift" in w for w in res["warnings"])
+
+def test_custom_exercise_uses_targets_and_synergists(tmp_path):
+    hp = write(tmp_path, "history.json", {})
+    rec = {"records": [{"id": "1", "text": (
+        "2026-08-11 08:27:48 +00:00 / program: \"P\" / dayName: \"D\" / week: 2 / dayInWeek: 1 / duration: 3600s / exercises: {\n"
+        "  Bird Dog / 2x4 0kg / target: 2x4 0kg 15s\n"
+        "}"
+    )}]}
+    with open(hp, "w") as f:
+        json.dump(rec, f)
+    cp = write(tmp_path, "custom_exercises.json", {"exercises": [
+        {"id": "x", "name": "Bird Dog",
+         "targetMuscles": ["Erector Spinae", "Gluteus Maximus"],
+         "synergistMuscles": ["Obliques"]}
+    ]})
+    mp = write(tmp_path, "muscle_map.json", {})
+    res = aggregate(history_path=hp, custom_path=cp, map_path=mp,
+                    now=datetime(2026, 8, 14).date())
+    assert res["groups"]["Back"][-1] == 2      # Erector Spinae
+    assert res["groups"]["Glutes"][-1] == 2    # Gluteus Maximus
+    assert res["groups"]["Core"][-1] == 2      # Obliques (synergist)

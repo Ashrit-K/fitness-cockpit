@@ -56,7 +56,7 @@ def _tonnage(sets):
     return sum(s["reps"] * s["weight_kg"] for s in sets)
 
 def aggregate(history_path="history.json", custom_path="custom_exercises.json",
-              map_path="muscle_map.json"):
+              map_path="muscle_map.json", now=None):
     with open(history_path) as f:
         records = json.load(f)["records"]
     with open(custom_path) as f:
@@ -64,7 +64,8 @@ def aggregate(history_path="history.json", custom_path="custom_exercises.json",
     with open(map_path) as f:
         builtins = json.load(f)
 
-    now = datetime.now(timezone.utc).date()
+    if now is None:
+        now = datetime.now(timezone.utc).date()
     this_monday = monday(now)
     weeks = [this_monday - timedelta(weeks=7 - i) for i in range(8)]
     week_idx = {w.isoformat(): i for i, w in enumerate(weeks)}
@@ -92,7 +93,7 @@ def aggregate(history_path="history.json", custom_path="custom_exercises.json",
             custom = customs.get(ex["name"])
             muscles = None
             if custom:
-                muscles = custom.get("targetMuscles") or custom.get("synergistMuscles")
+                muscles = list(custom.get("targetMuscles") or []) + list(custom.get("synergistMuscles") or [])
             else:
                 muscles = builtins.get(ex["name"])
             if not muscles:
