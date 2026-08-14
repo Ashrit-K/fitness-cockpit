@@ -1,0 +1,1400 @@
+{
+  "Ab Wheel": [
+    "Iliopsoas"
+  ],
+  "Arch Hang": [
+    "Latissimus Dorsi"
+  ],
+  "Arnold Press": [
+    "Deltoid Anterior"
+  ],
+  "Arnold Press, Kettlebell": [
+    "Deltoid Anterior"
+  ],
+  "Around The World": [
+    "Deltoid Anterior",
+    "Pectoralis Major Clavicular Head",
+    "Pectoralis Major Sternal Head"
+  ],
+  "Assisted Squat": [
+    "Quadriceps"
+  ],
+  "Back Extension": [
+    "Erector Spinae"
+  ],
+  "Back Extension, Bodyweight": [
+    "Erector Spinae"
+  ],
+  "Ball Slams": [
+    "Infraspinatus",
+    "Latissimus Dorsi",
+    "Teres Major",
+    "Teres Minor",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Battle Ropes": [
+    "Deltoid Posterior"
+  ],
+  "Behind The Neck Press": [
+    "Deltoid Anterior"
+  ],
+  "Bench Dip": [
+    "Triceps Brachii"
+  ],
+  "Bench Press": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Bench Press Close Grip": [
+    "Triceps Brachii"
+  ],
+  "Bench Press Close Grip, EZ Bar": [
+    "Triceps Brachii"
+  ],
+  "Bench Press Close Grip, Smith Machine": [
+    "Triceps Brachii"
+  ],
+  "Bench Press Wide Grip": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Bench Press Wide Grip, Smith Machine": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Bench Press, Band": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Bench Press, Cable": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Bench Press, Dumbbell": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Bench Press, Kettlebell": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Bench Press, Smith Machine": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Bent Over One Arm Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Bent Over Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Bent Over Row, Band": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Bent Over Row, Cable": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Bent Over Row, Dumbbell": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Bent Over Row, Leverage Machine": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Bent Over Row, Smith Machine": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Bicep Curl": [
+    "Biceps Brachii"
+  ],
+  "Bicep Curl, Band": [
+    "Biceps Brachii"
+  ],
+  "Bicep Curl, Barbell": [
+    "Biceps Brachii"
+  ],
+  "Bicep Curl, Cable": [
+    "Biceps Brachii"
+  ],
+  "Bicep Curl, EZ Bar": [
+    "Biceps Brachii"
+  ],
+  "Bicep Curl, Leverage Machine": [
+    "Biceps Brachii"
+  ],
+  "Bicycle Crunch": [
+    "Obliques",
+    "Rectus Abdominis"
+  ],
+  "Box Jump": [
+    "Quadriceps",
+    "Gluteus Maximus",
+    "Gastrocnemius",
+    "Soleus"
+  ],
+  "Box Squat": [
+    "Gluteus Maximus"
+  ],
+  "Box Squat, Dumbbell": [
+    "Gluteus Maximus"
+  ],
+  "Bulgarian Split Squat": [
+    "Quadriceps"
+  ],
+  "Burpee": [
+    "Quadriceps",
+    "Gluteus Maximus",
+    "Pectoralis Major Clavicular Head",
+    "Pectoralis Major Sternal Head",
+    "Triceps Brachii",
+    "Deltoid Anterior",
+    "Deltoid Lateral",
+    "Deltoid Posterior",
+    "Rectus Abdominis"
+  ],
+  "Cable Crossover": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Cable Crunch": [
+    "Rectus Abdominis"
+  ],
+  "Cable Kickback": [
+    "Triceps Brachii"
+  ],
+  "Cable Pull Through": [
+    "Gluteus Maximus"
+  ],
+  "Cable Twist": [
+    "Obliques"
+  ],
+  "Cable Twist, Band": [
+    "Obliques"
+  ],
+  "Cable Twist, Barbell": [
+    "Obliques"
+  ],
+  "Cable Twist, Bodyweight": [
+    "Obliques"
+  ],
+  "Cable Twist, Leverage Machine": [
+    "Obliques"
+  ],
+  "Calf Press on Leg Press": [
+    "Gastrocnemius"
+  ],
+  "Calf Press on Seated Leg Press": [
+    "Gastrocnemius"
+  ],
+  "Chest Dip": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Chest Fly": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Chest Fly, Barbell": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Chest Fly, Cable": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Chest Fly, Leverage Machine": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Chest Press": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Chest Press, Band": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Chest Press, Leverage Machine": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Chest-Supported Row": [
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Chest-Supported Row, Dumbbell": [
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Chin Up": [
+    "Latissimus Dorsi"
+  ],
+  "Chin Up, Leverage Machine": [
+    "Latissimus Dorsi"
+  ],
+  "Clean": [
+    "Gluteus Maximus",
+    "Hamstrings",
+    "Quadriceps",
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Deltoid Anterior",
+    "Deltoid Lateral"
+  ],
+  "Clean and Jerk": [
+    "Gluteus Maximus",
+    "Hamstrings",
+    "Quadriceps",
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Deltoid Anterior",
+    "Deltoid Lateral"
+  ],
+  "Concentration Curl": [
+    "Brachialis"
+  ],
+  "Concentration Curl, Band": [
+    "Brachialis"
+  ],
+  "Concentration Curl, Barbell": [
+    "Brachialis"
+  ],
+  "Concentration Curl, Cable": [
+    "Brachialis"
+  ],
+  "Copenhagen Plank": [
+    "Adductor Magnus"
+  ],
+  "Cross Body Crunch": [
+    "Obliques"
+  ],
+  "Crow Pose": [
+    "Deltoid Anterior"
+  ],
+  "Crunch": [
+    "Rectus Abdominis"
+  ],
+  "Crunch, Cable": [
+    "Rectus Abdominis"
+  ],
+  "Crunch, Leverage Machine": [
+    "Rectus Abdominis"
+  ],
+  "Cycling": [
+    "Quadriceps",
+    "Hamstrings",
+    "Gluteus Maximus",
+    "Gastrocnemius",
+    "Soleus",
+    "Tibialis Anterior"
+  ],
+  "Dead Hang": [
+    "Latissimus Dorsi",
+    "Wrist Flexors"
+  ],
+  "Deadlift": [
+    "Gluteus Maximus"
+  ],
+  "Deadlift High Pull": [
+    "Deltoid Lateral",
+    "Gluteus Maximus",
+    "Quadriceps"
+  ],
+  "Deadlift, Band": [
+    "Gluteus Maximus"
+  ],
+  "Deadlift, Bodyweight": [
+    "Gluteus Maximus"
+  ],
+  "Deadlift, Cable": [
+    "Gluteus Maximus"
+  ],
+  "Deadlift, Dumbbell": [
+    "Gluteus Maximus"
+  ],
+  "Deadlift, Kettlebell": [
+    "Gluteus Maximus"
+  ],
+  "Deadlift, Leverage Machine": [
+    "Gluteus Maximus"
+  ],
+  "Deadlift, Smith Machine": [
+    "Gluteus Maximus"
+  ],
+  "Decline Bench Press": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Decline Bench Press, Dumbbell": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Decline Bench Press, Smith Machine": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Decline Crunch": [
+    "Rectus Abdominis"
+  ],
+  "Deficit Deadlift": [
+    "Gluteus Maximus"
+  ],
+  "Deficit Deadlift, Trap Bar": [
+    "Gluteus Maximus"
+  ],
+  "Diamond Push Up": [
+    "Triceps Brachii"
+  ],
+  "Dragon Flag": [
+    "Rectus Abdominis"
+  ],
+  "Face Pull": [
+    "Deltoid Posterior"
+  ],
+  "Flat Knee Raise": [
+    "Iliopsoas"
+  ],
+  "Flat Leg Raise": [
+    "Iliopsoas"
+  ],
+  "Front Lever Row": [
+    "Latissimus Dorsi"
+  ],
+  "Front Raise": [
+    "Deltoid Anterior"
+  ],
+  "Front Raise, Band": [
+    "Deltoid Anterior"
+  ],
+  "Front Raise, Barbell": [
+    "Deltoid Anterior"
+  ],
+  "Front Raise, Bodyweight": [
+    "Deltoid Anterior"
+  ],
+  "Front Raise, Cable": [
+    "Deltoid Anterior"
+  ],
+  "Front Squat": [
+    "Quadriceps"
+  ],
+  "Front Squat, Cable": [
+    "Quadriceps"
+  ],
+  "Front Squat, Dumbbell": [
+    "Quadriceps"
+  ],
+  "Front Squat, Kettlebell": [
+    "Quadriceps"
+  ],
+  "Front Squat, Smith Machine": [
+    "Quadriceps"
+  ],
+  "Glute Bridge": [
+    "Gluteus Maximus"
+  ],
+  "Glute Bridge March": [
+    "Gluteus Maximus",
+    "Rectus Abdominis"
+  ],
+  "Glute Bridge, Band": [
+    "Gluteus Maximus"
+  ],
+  "Glute Bridge, Barbell": [
+    "Gluteus Maximus"
+  ],
+  "Glute Kickback": [
+    "Gluteus Maximus"
+  ],
+  "Glute Kickback, Band": [
+    "Gluteus Maximus"
+  ],
+  "Glute Kickback, Bodyweight": [
+    "Gluteus Maximus"
+  ],
+  "Glute Kickback, Leverage Machine": [
+    "Gluteus Maximus"
+  ],
+  "Goblet Squat": [
+    "Gluteus Maximus"
+  ],
+  "Goblet Squat, Kettlebell": [
+    "Gluteus Maximus"
+  ],
+  "Good Morning": [
+    "Hamstrings"
+  ],
+  "Good Morning, Leverage Machine": [
+    "Hamstrings"
+  ],
+  "Good Morning, Smith Machine": [
+    "Hamstrings"
+  ],
+  "Hack Squat": [
+    "Quadriceps"
+  ],
+  "Hack Squat, Smith Machine": [
+    "Quadriceps"
+  ],
+  "Hammer Curl": [
+    "Brachioradialis"
+  ],
+  "Hammer Curl, Band": [
+    "Brachioradialis"
+  ],
+  "Hammer Curl, Cable": [
+    "Brachioradialis"
+  ],
+  "Handstand": [
+    "Deltoid Anterior"
+  ],
+  "Handstand Push Up": [
+    "Deltoid Anterior"
+  ],
+  "Hang Clean": [
+    "Biceps Brachii",
+    "Brachialis",
+    "Brachioradialis"
+  ],
+  "Hang Clean, Kettlebell": [
+    "Biceps Brachii",
+    "Brachialis",
+    "Brachioradialis"
+  ],
+  "Hang Snatch": [
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers",
+    "Trapezius Upper Fibers",
+    "Quadriceps",
+    "Gluteus Maximus"
+  ],
+  "Hanging Knee Raise": [
+    "Iliopsoas"
+  ],
+  "Hanging Leg Raise": [
+    "Iliopsoas"
+  ],
+  "Hanging Leg Raise, Cable": [
+    "Iliopsoas"
+  ],
+  "High Knee Skips": [
+    "Quadriceps",
+    "Hamstrings",
+    "Gluteus Maximus"
+  ],
+  "High Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Hip Abductor": [
+    "Gluteus Maximus",
+    "Gluteus Medius"
+  ],
+  "Hip Abductor, Band": [
+    "Gluteus Maximus",
+    "Gluteus Medius"
+  ],
+  "Hip Abductor, Bodyweight": [
+    "Gluteus Maximus",
+    "Gluteus Medius"
+  ],
+  "Hip Abductor, Cable": [
+    "Gluteus Maximus",
+    "Gluteus Medius"
+  ],
+  "Hip Adductor": [
+    "Adductor Brevis",
+    "Adductor Longus",
+    "Adductor Magnus"
+  ],
+  "Hip Adductor, Band": [
+    "Adductor Brevis",
+    "Adductor Longus",
+    "Adductor Magnus"
+  ],
+  "Hip Adductor, Bodyweight": [
+    "Adductor Brevis",
+    "Adductor Longus",
+    "Adductor Magnus"
+  ],
+  "Hip Adductor, Cable": [
+    "Adductor Brevis",
+    "Adductor Longus",
+    "Adductor Magnus"
+  ],
+  "Hip Thrust": [
+    "Gluteus Maximus"
+  ],
+  "Hip Thrust, Band": [
+    "Gluteus Maximus"
+  ],
+  "Hip Thrust, Bodyweight": [
+    "Gluteus Maximus"
+  ],
+  "Hip Thrust, Leverage Machine": [
+    "Gluteus Maximus"
+  ],
+  "Incline Bench Press": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Bench Press Wide Grip": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Bench Press, Cable": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Bench Press, Dumbbell": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Bench Press, Smith Machine": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Chest Fly": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Chest Fly, Cable": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Chest Press": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Chest Press, Band": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Chest Press, Leverage Machine": [
+    "Pectoralis Major Clavicular Head"
+  ],
+  "Incline Curl": [
+    "Biceps Brachii"
+  ],
+  "Incline Push Up": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Incline Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Incline Row, Barbell": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Inverted Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Iso-Lateral Chest Press": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Iso-Lateral Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Jackknife Sit Up": [
+    "Rectus Abdominis"
+  ],
+  "Jump Rope": [
+    "Soleus",
+    "Gastrocnemius",
+    "Quadriceps",
+    "Hamstrings"
+  ],
+  "Jump Squat": [
+    "Gluteus Maximus",
+    "Quadriceps"
+  ],
+  "Jump Squat, Bodyweight": [
+    "Gluteus Maximus",
+    "Quadriceps"
+  ],
+  "Jumping Jack": [
+    "Gluteus Maximus",
+    "Quadriceps",
+    "Adductor Brevis",
+    "Adductor Longus",
+    "Adductor Magnus",
+    "Deltoid Anterior",
+    "Deltoid Lateral",
+    "Deltoid Posterior"
+  ],
+  "Jumping Jack, Bodyweight": [
+    "Gluteus Maximus",
+    "Quadriceps",
+    "Adductor Brevis",
+    "Adductor Longus",
+    "Adductor Magnus",
+    "Deltoid Anterior",
+    "Deltoid Lateral",
+    "Deltoid Posterior"
+  ],
+  "Kettlebell Swing": [
+    "Deltoid Anterior",
+    "Gluteus Maximus"
+  ],
+  "Kettlebell Swing, Dumbbell": [
+    "Deltoid Anterior",
+    "Gluteus Maximus"
+  ],
+  "Kettlebell Turkish Get Up": [
+    "Deltoid Anterior",
+    "Deltoid Lateral",
+    "Deltoid Posterior",
+    "Quadriceps",
+    "Gluteus Maximus"
+  ],
+  "Kipping Pull Up": [
+    "Latissimus Dorsi",
+    "Brachialis",
+    "Biceps Brachii",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Knee Push Up": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Knee Raise": [
+    "Iliopsoas"
+  ],
+  "Kneeling Pulldown": [
+    "Latissimus Dorsi"
+  ],
+  "Knees to Elbows": [
+    "Rectus Abdominis"
+  ],
+  "Lat Pulldown": [
+    "Latissimus Dorsi"
+  ],
+  "Lateral Box Jump": [
+    "Gluteus Maximus",
+    "Quadriceps",
+    "Hamstrings"
+  ],
+  "Lateral Box Jump, Bodyweight": [
+    "Gluteus Maximus",
+    "Quadriceps",
+    "Hamstrings"
+  ],
+  "Lateral Raise": [
+    "Deltoid Lateral"
+  ],
+  "Lateral Raise, Band": [
+    "Deltoid Lateral"
+  ],
+  "Lateral Raise, Cable": [
+    "Deltoid Lateral"
+  ],
+  "Lateral Raise, Kettlebell": [
+    "Deltoid Lateral"
+  ],
+  "Lateral Raise, Leverage Machine": [
+    "Deltoid Lateral"
+  ],
+  "Leg Curl": [
+    "Hamstrings"
+  ],
+  "Leg Extension": [
+    "Quadriceps"
+  ],
+  "Leg Extension, Band": [
+    "Quadriceps"
+  ],
+  "Leg Press": [
+    "Quadriceps"
+  ],
+  "Leg Press, Smith Machine": [
+    "Quadriceps"
+  ],
+  "Legs Up Bench Press": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Lunge": [
+    "Quadriceps"
+  ],
+  "Lunge, Bodyweight": [
+    "Quadriceps"
+  ],
+  "Lunge, Cable": [
+    "Quadriceps"
+  ],
+  "Lunge, Dumbbell": [
+    "Quadriceps"
+  ],
+  "Lying Bicep Curl": [
+    "Biceps Brachii"
+  ],
+  "Lying Bicep Curl, Band": [
+    "Biceps Brachii"
+  ],
+  "Lying Bicep Curl, Barbell": [
+    "Biceps Brachii"
+  ],
+  "Lying Bicep Curl, Cable": [
+    "Biceps Brachii"
+  ],
+  "Lying Bicep Curl, EZ Bar": [
+    "Biceps Brachii"
+  ],
+  "Lying Bicep Curl, Leverage Machine": [
+    "Biceps Brachii"
+  ],
+  "Lying Leg Curl": [
+    "Hamstrings"
+  ],
+  "Lying Leg Curl, Band": [
+    "Hamstrings"
+  ],
+  "Mountain Climber": [
+    "Iliopsoas"
+  ],
+  "Muscle Up": [
+    "Biceps Brachii",
+    "Brachialis",
+    "Brachioradialis",
+    "Deltoid Posterior",
+    "Infraspinatus",
+    "Latissimus Dorsi",
+    "Pectoralis Major Sternal Head",
+    "Teres Major",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers",
+    "Triceps Brachii"
+  ],
+  "Negative Dip": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Negative Pull Up": [
+    "Latissimus Dorsi"
+  ],
+  "Nordic Curl": [
+    "Hamstrings"
+  ],
+  "Oblique Crunch": [
+    "Obliques"
+  ],
+  "Overhead Press": [
+    "Deltoid Anterior"
+  ],
+  "Overhead Press, Dumbbell": [
+    "Deltoid Anterior"
+  ],
+  "Overhead Press, EZ Bar": [
+    "Deltoid Anterior"
+  ],
+  "Overhead Squat": [
+    "Quadriceps"
+  ],
+  "Overhead Squat, Dumbbell": [
+    "Quadriceps"
+  ],
+  "Pallof Press": [
+    "Obliques"
+  ],
+  "Pec Deck": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Pendlay Row": [
+    "Deltoid Posterior",
+    "Infraspinatus",
+    "Latissimus Dorsi",
+    "Teres Major",
+    "Teres Minor",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Pike Push Up": [
+    "Deltoid Anterior"
+  ],
+  "Pistol Squat": [
+    "Gluteus Maximus"
+  ],
+  "Pistol Squat, Kettlebell": [
+    "Gluteus Maximus"
+  ],
+  "Pistol Squat, Leverage Machine": [
+    "Gluteus Maximus"
+  ],
+  "Plank": [
+    "Rectus Abdominis"
+  ],
+  "Power Clean": [
+    "Quadriceps",
+    "Gluteus Maximus",
+    "Deltoid Anterior"
+  ],
+  "Power Snatch": [
+    "Quadriceps",
+    "Gluteus Maximus",
+    "Deltoid Anterior",
+    "Deltoid Lateral",
+    "Deltoid Posterior"
+  ],
+  "Preacher Curl": [
+    "Brachialis"
+  ],
+  "Preacher Curl, Barbell": [
+    "Brachialis"
+  ],
+  "Preacher Curl, EZ Bar": [
+    "Brachialis"
+  ],
+  "Preacher Curl, Leverage Machine": [
+    "Brachialis"
+  ],
+  "Press Under": [
+    "Quadriceps",
+    "Deltoid Anterior",
+    "Deltoid Lateral",
+    "Deltoid Posterior"
+  ],
+  "Pseudo Planche Push Up": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Pull Up": [
+    "Latissimus Dorsi"
+  ],
+  "Pull Up, Band": [
+    "Latissimus Dorsi"
+  ],
+  "Pull Up, Leverage Machine": [
+    "Latissimus Dorsi"
+  ],
+  "Pullover": [
+    "Latissimus Dorsi"
+  ],
+  "Pullover, Barbell": [
+    "Latissimus Dorsi"
+  ],
+  "Push Press": [
+    "Deltoid Anterior"
+  ],
+  "Push Press, Bodyweight": [
+    "Deltoid Anterior"
+  ],
+  "Push Up": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Push Up, Band": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Renegade Row": [
+    "Latissimus Dorsi",
+    "Obliques"
+  ],
+  "Reverse Crunch": [
+    "Rectus Abdominis"
+  ],
+  "Reverse Crunch, Cable": [
+    "Rectus Abdominis"
+  ],
+  "Reverse Curl": [
+    "Brachioradialis"
+  ],
+  "Reverse Curl, Band": [
+    "Brachioradialis"
+  ],
+  "Reverse Curl, Barbell": [
+    "Brachioradialis"
+  ],
+  "Reverse Curl, Cable": [
+    "Brachioradialis"
+  ],
+  "Reverse Fly": [
+    "Deltoid Posterior"
+  ],
+  "Reverse Fly, Band": [
+    "Deltoid Posterior"
+  ],
+  "Reverse Fly, Leverage Machine": [
+    "Deltoid Posterior"
+  ],
+  "Reverse Grip Concentration Curl": [
+    "Brachialis",
+    "Brachioradialis"
+  ],
+  "Reverse Hyperextension": [
+    "Gluteus Maximus"
+  ],
+  "Reverse Hyperextension, Leverage Machine": [
+    "Gluteus Maximus"
+  ],
+  "Reverse Lat Pulldown": [
+    "Latissimus Dorsi"
+  ],
+  "Reverse Lunge": [
+    "Quadriceps"
+  ],
+  "Reverse Lunge, Barbell": [
+    "Quadriceps"
+  ],
+  "Reverse Lunge, Bodyweight": [
+    "Quadriceps"
+  ],
+  "Reverse Lunge, Cable": [
+    "Quadriceps"
+  ],
+  "Reverse Plank": [
+    "Gluteus Maximus",
+    "Rectus Abdominis",
+    "Erector Spinae"
+  ],
+  "Reverse Wrist Curl": [
+    "Wrist Extensors"
+  ],
+  "Ring Dip": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Ring Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Romanian Deadlift": [
+    "Gluteus Maximus"
+  ],
+  "Romanian Deadlift, Barbell": [
+    "Gluteus Maximus"
+  ],
+  "Rowing": [
+    "Quadriceps",
+    "Latissimus Dorsi",
+    "Erector Spinae"
+  ],
+  "Rowing, Cable": [
+    "Quadriceps",
+    "Latissimus Dorsi",
+    "Erector Spinae"
+  ],
+  "Russian Twist": [
+    "Obliques"
+  ],
+  "Russian Twist, Cable": [
+    "Obliques"
+  ],
+  "Russian Twist, Dumbbell": [
+    "Obliques"
+  ],
+  "Safety Squat Bar Squat": [
+    "Gluteus Maximus"
+  ],
+  "Scapular Pull Up": [
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Seated Calf Raise": [
+    "Soleus"
+  ],
+  "Seated Calf Raise, Dumbbell": [
+    "Soleus"
+  ],
+  "Seated Calf Raise, Leverage Machine": [
+    "Soleus"
+  ],
+  "Seated Front Raise": [
+    "Deltoid Anterior"
+  ],
+  "Seated Front Raise, Barbell": [
+    "Deltoid Anterior"
+  ],
+  "Seated Leg Curl": [
+    "Hamstrings"
+  ],
+  "Seated Leg Press": [
+    "Gluteus Maximus",
+    "Quadriceps"
+  ],
+  "Seated Overhead Press": [
+    "Deltoid Anterior"
+  ],
+  "Seated Palms Up Wrist Curl": [
+    "Wrist Flexors"
+  ],
+  "Seated Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Seated Row, Band": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Seated Row, Leverage Machine": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Seated Wide Grip Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Shoulder Press": [
+    "Deltoid Anterior"
+  ],
+  "Shoulder Press Parallel Grip": [
+    "Deltoid Anterior"
+  ],
+  "Shoulder Press, Band": [
+    "Deltoid Anterior"
+  ],
+  "Shoulder Press, Cable": [
+    "Deltoid Anterior"
+  ],
+  "Shoulder Press, Leverage Machine": [
+    "Deltoid Anterior"
+  ],
+  "Shoulder Press, Smith Machine": [
+    "Deltoid Anterior"
+  ],
+  "Shrimp Squat": [
+    "Gluteus Maximus"
+  ],
+  "Shrug": [
+    "Trapezius Upper Fibers"
+  ],
+  "Shrug, Band": [
+    "Trapezius Upper Fibers"
+  ],
+  "Shrug, Barbell": [
+    "Trapezius Upper Fibers"
+  ],
+  "Shrug, Cable": [
+    "Trapezius Upper Fibers"
+  ],
+  "Shrug, Leverage Machine": [
+    "Trapezius Upper Fibers"
+  ],
+  "Shrug, Smith Machine": [
+    "Trapezius Upper Fibers"
+  ],
+  "Side Bend": [
+    "Obliques"
+  ],
+  "Side Bend, Band": [
+    "Obliques"
+  ],
+  "Side Bend, Cable": [
+    "Obliques"
+  ],
+  "Side Crunch": [
+    "Obliques"
+  ],
+  "Side Crunch, Band": [
+    "Obliques"
+  ],
+  "Side Crunch, Cable": [
+    "Obliques"
+  ],
+  "Side Hip Abductor": [
+    "Gluteus Medius",
+    "Tensor Fasciae Latae"
+  ],
+  "Side Hip Abductor, Barbell": [
+    "Gluteus Medius",
+    "Tensor Fasciae Latae"
+  ],
+  "Side Hip Abductor, Leverage Machine": [
+    "Gluteus Medius",
+    "Tensor Fasciae Latae"
+  ],
+  "Side Lying Clam": [
+    "Gluteus Medius"
+  ],
+  "Side Plank": [
+    "Obliques"
+  ],
+  "Single Leg Bridge": [
+    "Gluteus Maximus"
+  ],
+  "Single Leg Calf Raise": [
+    "Gastrocnemius"
+  ],
+  "Single Leg Calf Raise, Bodyweight": [
+    "Gastrocnemius"
+  ],
+  "Single Leg Calf Raise, Cable": [
+    "Gastrocnemius"
+  ],
+  "Single Leg Calf Raise, Dumbbell": [
+    "Gastrocnemius"
+  ],
+  "Single Leg Calf Raise, Leverage Machine": [
+    "Gastrocnemius"
+  ],
+  "Single Leg Deadlift": [
+    "Gluteus Maximus"
+  ],
+  "Single Leg Deadlift, Bodyweight": [
+    "Gluteus Maximus"
+  ],
+  "Single Leg Glute Bridge Bent Knee": [
+    "Gluteus Maximus"
+  ],
+  "Single Leg Glute Bridge On Bench": [
+    "Gluteus Maximus"
+  ],
+  "Single Leg Glute Bridge Straight Leg": [
+    "Gluteus Maximus"
+  ],
+  "Single Leg Hip Thrust": [
+    "Gluteus Maximus"
+  ],
+  "Single Leg Hip Thrust, Barbell": [
+    "Gluteus Maximus"
+  ],
+  "Single Leg Hip Thrust, Leverage Machine": [
+    "Gluteus Maximus"
+  ],
+  "Sissy Squat": [
+    "Quadriceps"
+  ],
+  "Sit Up": [
+    "Rectus Abdominis"
+  ],
+  "Sit Up, Kettlebell": [
+    "Rectus Abdominis"
+  ],
+  "Skullcrusher": [
+    "Triceps Brachii"
+  ],
+  "Skullcrusher, Barbell": [
+    "Triceps Brachii"
+  ],
+  "Skullcrusher, Cable": [
+    "Triceps Brachii"
+  ],
+  "Skullcrusher, Dumbbell": [
+    "Triceps Brachii"
+  ],
+  "Sling Shot Bench Press": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Snatch": [
+    "Deltoid Anterior",
+    "Erector Spinae",
+    "Gluteus Maximus",
+    "Quadriceps"
+  ],
+  "Snatch Pull": [
+    "Erector Spinae",
+    "Gluteus Maximus",
+    "Hamstrings",
+    "Quadriceps",
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers",
+    "Trapezius Upper Fibers"
+  ],
+  "Split Jerk": [
+    "Deltoid Anterior",
+    "Deltoid Posterior",
+    "Deltoid Lateral",
+    "Triceps Brachii",
+    "Quadriceps",
+    "Gluteus Maximus",
+    "Erector Spinae"
+  ],
+  "Split Squat": [
+    "Quadriceps"
+  ],
+  "Squat": [
+    "Quadriceps"
+  ],
+  "Squat Row": [
+    "Gluteus Maximus",
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Squat, Bodyweight": [
+    "Quadriceps"
+  ],
+  "Squat, Dumbbell": [
+    "Quadriceps"
+  ],
+  "Squat, Leverage Machine": [
+    "Quadriceps"
+  ],
+  "Squat, Smith Machine": [
+    "Quadriceps"
+  ],
+  "Standing Calf Raise": [
+    "Gastrocnemius"
+  ],
+  "Standing Calf Raise, Barbell": [
+    "Gastrocnemius"
+  ],
+  "Standing Calf Raise, Bodyweight": [
+    "Gastrocnemius"
+  ],
+  "Standing Calf Raise, Cable": [
+    "Gastrocnemius"
+  ],
+  "Standing Calf Raise, Leverage Machine": [
+    "Gastrocnemius"
+  ],
+  "Standing Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Standing Row Close Grip": [
+    "Latissimus Dorsi",
+    "Trapezius Upper Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Standing Row Rear Delt With Rope": [
+    "Deltoid Posterior"
+  ],
+  "Standing Row Rear Delt, Horizontal, With Rope": [
+    "Deltoid Posterior"
+  ],
+  "Standing Row V-Bar": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Step up": [
+    "Quadriceps"
+  ],
+  "Step up, Band": [
+    "Quadriceps"
+  ],
+  "Step up, Barbell": [
+    "Quadriceps"
+  ],
+  "Step up, Bodyweight": [
+    "Quadriceps"
+  ],
+  "Stiff Leg Deadlift": [
+    "Erector Spinae"
+  ],
+  "Stiff Leg Deadlift, Band": [
+    "Erector Spinae"
+  ],
+  "Stiff Leg Deadlift, Dumbbell": [
+    "Erector Spinae"
+  ],
+  "Straight Leg Deadlift": [
+    "Hamstrings"
+  ],
+  "Straight Leg Deadlift, Band": [
+    "Hamstrings"
+  ],
+  "Straight Leg Deadlift, Dumbbell": [
+    "Hamstrings"
+  ],
+  "Straight Leg Deadlift, Kettlebell": [
+    "Hamstrings"
+  ],
+  "Sumo Deadlift": [
+    "Erector Spinae"
+  ],
+  "Sumo Deadlift High Pull": [
+    "Deltoid Lateral",
+    "Gluteus Maximus",
+    "Quadriceps"
+  ],
+  "Superman": [
+    "Erector Spinae"
+  ],
+  "Superman, Dumbbell": [
+    "Erector Spinae"
+  ],
+  "Support Hold": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "T Bar Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Thruster": [
+    "Deltoid Anterior",
+    "Gluteus Maximus",
+    "Quadriceps"
+  ],
+  "Toes To Bar": [
+    "Rectus Abdominis"
+  ],
+  "Torso Rotation": [
+    "Obliques"
+  ],
+  "Torso Rotation, Cable": [
+    "Obliques"
+  ],
+  "Trap Bar Deadlift": [
+    "Gluteus Maximus"
+  ],
+  "Triceps Dip": [
+    "Triceps Brachii"
+  ],
+  "Triceps Dip, Leverage Machine": [
+    "Triceps Brachii"
+  ],
+  "Triceps Extension": [
+    "Triceps Brachii"
+  ],
+  "Triceps Extension, Band": [
+    "Triceps Brachii"
+  ],
+  "Triceps Extension, Barbell": [
+    "Triceps Brachii"
+  ],
+  "Triceps Extension, Cable": [
+    "Triceps Brachii"
+  ],
+  "Triceps Pushdown": [
+    "Triceps Brachii"
+  ],
+  "Tuck Front Lever Row": [
+    "Latissimus Dorsi"
+  ],
+  "Upright Row": [
+    "Deltoid Lateral"
+  ],
+  "Upright Row, Band": [
+    "Deltoid Lateral"
+  ],
+  "Upright Row, Barbell": [
+    "Deltoid Lateral"
+  ],
+  "Upright Row, Cable": [
+    "Deltoid Lateral"
+  ],
+  "V Up": [
+    "Rectus Abdominis"
+  ],
+  "V Up, Band": [
+    "Rectus Abdominis"
+  ],
+  "V Up, Dumbbell": [
+    "Rectus Abdominis"
+  ],
+  "Vertical Row": [
+    "Latissimus Dorsi",
+    "Trapezius Lower Fibers",
+    "Trapezius Middle Fibers"
+  ],
+  "Wall Handstand": [
+    "Deltoid Anterior"
+  ],
+  "Wall Push Up": [
+    "Pectoralis Major Sternal Head"
+  ],
+  "Wide Pull Up": [
+    "Latissimus Dorsi"
+  ],
+  "Wide Row": [
+    "Latissimus Dorsi",
+    "Trapezius Middle Fibers"
+  ],
+  "Wrist Curl": [
+    "Wrist Flexors"
+  ],
+  "Wrist Roller": [
+    "Wrist Extensors",
+    "Wrist Flexors"
+  ],
+  "Zercher Squat": [
+    "Quadriceps"
+  ]
+}
