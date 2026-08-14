@@ -1,0 +1,27 @@
+weight-tracker
+==============
+
+Third-party material included in this repository.
+
+data/body_muscles.json
+----------------------
+SVG path data for the front and back muscle figures.
+
+  Source:  https://github.com/vulovix/body-muscles
+  Licence: Apache License 2.0 — full text in data/body_muscles.LICENSE
+
+Changes from the original: the TypeScript muscle definitions were converted to
+JSON, keeping only each shape's id, name and path. The original rendering code,
+colour handling and grouping are not used. The mapping from Liftosaur muscle
+names to these shapes (body_map.py), the colour scale and the rendering in
+index.html are this project's own work.
+
+data/exercises.ts
+-----------------
+Exercise-to-muscle data used to build muscle_map.json.
+
+  Source:  https://github.com/astashov/liftosaur (src/data/exercises.ts)
+  Licence: AGPL-3.0
+
+Only the target and synergist muscle lists are read from this file, at build
+time, to produce muscle_map.json. No Liftosaur source code is distributed here.

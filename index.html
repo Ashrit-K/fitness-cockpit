@@ -170,6 +170,12 @@
   }
   .meter.key { border-color: color-mix(in srgb, var(--accent) 55%, var(--edge)); }
 
+  /* ---------- body figure ---------- */
+  #body svg { width: 100%; height: auto; max-height: 460px; display: block; }
+  #body path { transition: fill .12s; }
+  #body path.lit { cursor: crosshair; }
+  #body path.lit:hover { stroke: var(--ink); stroke-width: 0.4; }
+
   /* ---------- milestone chips ---------- */
   .miles { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
   .mile {
@@ -361,8 +367,14 @@
       <div id="session-tonnage"></div>
     </div>
 
-    <div class="card p fixed scroll">
-      <p class="card-h">Every group against the band <span class="r">effective sets · last 8 weeks · ▲▼ is the move on the week before</span></p>
+    <div class="card p5">
+      <p class="card-h">Where the work landed · back, front
+        <span class="r" id="body-r">—</span></p>
+      <div class="scale" id="scale-body"></div>
+      <div id="body"></div>
+    </div>
+    <div class="card p7 fixed scroll">
+      <p class="card-h">Every group against the band <span class="r">effective sets · last 6 weeks · ▲▼ is the move on the week before</span></p>
       <div class="legend" id="legend-targets"></div>
       <div id="fig-targets"></div>
     </div>
@@ -1206,6 +1218,70 @@
     });
   }
 
+  /* Front and back figures, one shape per muscle head, shaded by how much
+     work the week gave it relative to the hardest-worked muscle. Shape data is
+     Apache-2.0 from vulovix/body-muscles; the shading and mapping are ours. */
+  function bodyFigure(shapes, bm) {
+    var muscles = bm.muscles, w = bm.weeks.length - 1;
+
+    /* one shape can be claimed by several muscles — take the strongest claim,
+       never the sum, or an overlapping shape reads as more work than was done */
+    var byPart = {};
+    Object.keys(muscles).forEach(function (name) {
+      var m = muscles[name];
+      m.parts.forEach(function (p) {
+        var rec = byPart[p] || (byPart[p] = { v: 0, prev: 0, who: [] });
+        if (m.credit[w] > rec.v) rec.v = m.credit[w];
+        if (m.credit[w - 1] > rec.prev) rec.prev = m.credit[w - 1];
+        rec.who.push({ name: name, v: m.credit[w],
+                       d: m.direct[w], i: m.indirect[w] });
+      });
+    });
+    var max = 0;
+    Object.keys(byPart).forEach(function (p) { if (byPart[p].v > max) max = byPart[p].v; });
+    if (max <= 0) throw new Error("no work logged this week");
+
+    function bin(v) {
+      if (v <= 0) return 0;
+      var f = v / max;
+      return f <= 0.2 ? 1 : f <= 0.45 ? 2 : f <= 0.72 ? 3 : 4;
+    }
+    function base(id) {
+      return id.replace(/-(left|right)$/, "");
+    }
+
+    var s = svg("body", 72, 93);
+    s.setAttribute("aria-label", "Front and back body map, shaded by the week's effective sets");
+    s.setAttribute("height", 440);
+    shapes.front.concat(shapes.back).forEach(function (shape) {
+      var b = base(shape.id);
+      var rec = byPart[b];
+      var p = el("path", {
+        d: shape.d, fill: rec ? "var(--ramp-" + bin(rec.v) + ")" : "var(--ramp-0)",
+        stroke: "var(--surface)", "stroke-width": 0.18
+      });
+      if (rec) {
+        p.setAttribute("class", "lit");
+        var rows = rec.who.slice().sort(function (a, b2) { return b2.v - a.v; })
+          .map(function (x) {
+            return '<div class="row"><span>' + x.name + "</span><span><b>" +
+                   fmtSet(x.v) + "</b> · " + x.d + "d + " + x.i + "i</span></div>";
+          }).join("");
+        tipOn(p, tk(shape.name.replace(/^(Left|Right) /, "")) +
+          tv("<b>" + fmtSet(rec.v) + " effective sets</b> this week · " +
+             delta(Math.round((rec.v - rec.prev) * 10) / 10) + " on last week") + rows);
+      }
+      s.appendChild(p);
+    });
+
+    rampScale("scale-body", "Effective sets, week of " + shortDate(bm.weeks[w]) +
+      " &nbsp;none", "&nbsp;" + fmtSet(max));
+    var top = Object.keys(byPart).sort(function (a, b2) {
+      return byPart[b2].v - byPart[a].v;
+    })[0];
+    txt("body-r", "hardest worked: " + top.replace(/-/g, " ") + " · " + fmtSet(max) + " sets");
+  }
+
   /* ============================================================ STRENGTH */
 
   /* Weekly sets for one pattern, with the 12-week mean drawn behind. */
@@ -1710,7 +1786,10 @@
       sessionSets(D.recent);
     });
     draw("session-tonnage", function () { sessionTonnage(D.recent); });
-    draw("fig-targets", function () { targetHeat(w, 8); });
+    draw("fig-targets", function () { targetHeat(w, 6); });
+    loadJSON("data/body_muscles.json").then(function (shapes) {
+      draw("body", function () { bodyFigure(shapes, D.bodyMap); });
+    }).catch(function () { unavailable("body"); });
 
     draw("patterns", function () { patternCards(D.patterns); });
     draw("delts", function () { deltChart(D.delts); });
@@ -1864,7 +1943,7 @@
         ". The page renders whatever the exports hold at load time.");
   }).catch(function () {
     ["gauge", "fig-cut", "fig-history", "meters", "fig-sets", "fig-tonnage", "sessions",
-     "session-tonnage", "fig-targets", "patterns", "delts", "cal", "months", "sps",
+     "session-tonnage", "fig-targets", "body", "patterns", "delts", "cal", "months", "sps",
      "bwshare", "cats", "reps", "e1rm", "bwm", "life", "dow", "notes"]
       .forEach(unavailable);
   });

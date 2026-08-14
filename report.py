@@ -9,8 +9,9 @@ import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
+from body_map import MUSCLE_TO_PARTS
 from groups import (BROAD_GROUPS, CATEGORIES, GROUP_TO_CATEGORY, SYNERGIST_CREDIT,
-                    VTAPER, groups_for, weighted_groups)
+                    VTAPER, groups_for, muscles_for, synergists_for, weighted_groups)
 from patterns import DELT_HEADS, PATTERNS
 from lifto_parse import parse_record, ParseError
 
@@ -528,6 +529,41 @@ def weekly_volume(sessions, customs, builtins, weeks=26, now=None):
     }
 
 
+def muscle_week(sessions, customs, builtins, now=None, weeks=2):
+    """Credited sets per individual muscle, for the last `weeks` weeks.
+
+    The body figure is drawn per muscle head, so this stops at the muscle and
+    never rolls up to a group: a lateral raise has to light the side deltoid
+    alone. Credit is the same 1.0 target / 0.5 assist rule.
+    """
+    if now is None:
+        now = sessions[-1]["date"]
+    starts = [monday(now) - timedelta(weeks=weeks - 1 - i) for i in range(weeks)]
+    idx = {w: i for i, w in enumerate(starts)}
+    out = {}
+    for ses in sessions:
+        i = idx.get(monday(ses["date"]))
+        if i is None:
+            continue
+        for name, _s in all_sets(ses):
+            targets = muscles_for(name, customs, builtins)
+            assists = [m for m in synergists_for(name, customs, builtins)
+                       if m not in targets]
+            for m, credit in ([(t, 1.0) for t in targets]
+                              + [(a, SYNERGIST_CREDIT) for a in assists]):
+                if m not in MUSCLE_TO_PARTS:
+                    continue
+                rec = out.setdefault(m, {"credit": [0.0] * weeks,
+                                         "direct": [0] * weeks,
+                                         "indirect": [0] * weeks})
+                rec["credit"][i] += credit
+                rec["direct" if credit == 1.0 else "indirect"][i] += 1
+    for m, rec in out.items():
+        rec["credit"] = [round(v, 1) for v in rec["credit"]]
+        rec["parts"] = MUSCLE_TO_PARTS[m]
+    return {"weeks": [w.isoformat() for w in starts], "muscles": out}
+
+
 def recent_sessions(sessions, customs, builtins, n=24):
     """The last n sessions: total sets, tonnage, and sets per group."""
     out = []
@@ -878,6 +914,7 @@ def build(records, weights, customs, builtins, now=None):
     marks = milestones(series, goal)
     vol = weekly_volume(sessions, customs, builtins, now=now)
     recent = recent_sessions(sessions, customs, builtins)
+    bodymap = muscle_week(sessions, customs, builtins, now=now)
     watch = strength_watch(sessions, now)
     pats = pattern_series(sessions, now)
     delts = delt_heads(sessions, now)
@@ -895,6 +932,7 @@ def build(records, weights, customs, builtins, now=None):
         "milestones": marks,
         "weekly": vol,
         "recent": recent,
+        "bodyMap": bodymap,
         "watch": watch,
         "patterns": pats,
         "delts": delts,
