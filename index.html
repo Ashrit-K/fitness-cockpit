@@ -8,6 +8,7 @@
   body { font-family: -apple-system, "Segoe UI", sans-serif; background: #fff; color: #222; margin: 0; padding: 24px; }
   .wrap { max-width: 1200px; margin: 0 auto; }
   h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 20px 0 8px; }
   .meta { color: #666; font-size: 0.9rem; margin-bottom: 16px; }
   img { max-width: 100%; height: auto; border: 1px solid #eee; }
 </style>
@@ -16,17 +17,33 @@
 <div class="wrap">
   <h1>Weight Tracker</h1>
   <div class="meta">Last updated: <span id="updated">—</span> · Latest: <span id="latest">—</span> kg · Trend: <span id="trend">—</span> kg/week · Target: −0.45 kg/week</div>
-  <img id="chart" src="chart.png" alt="Weight trend chart">
+
+  <h2>Weight</h2>
+  <img src="chart.png" alt="Weight trend">
+
+  <h2>Volume — Sets</h2>
+  <img src="chart_sets.png" alt="Weekly sets by muscle group">
+
+  <h2>Volume — Tonnage</h2>
+  <img src="chart_tonnage.png" alt="Weekly tonnage by muscle group">
+
+  <h2>Sets vs Target</h2>
+  <img src="chart_targets.png" alt="Sets per muscle group vs 10-20 target">
 </div>
 <script>
-fetch("stats.json")
-  .then(r => r.json())
-  .then(s => {
-    document.getElementById("updated").textContent = s.updated_at.replace("T", " ");
-    document.getElementById("latest").textContent = s.latest_kg;
-    document.getElementById("trend").textContent = (s.trend_kg_per_week ?? 0).toFixed(2);
-  })
-  .catch(() => {});
+fetch("stats.json").then(r => r.json()).then(s => {
+  document.getElementById("updated").textContent = s.updated_at.replace("T", " ");
+  document.getElementById("latest").textContent = s.latest_kg;
+  document.getElementById("trend").textContent = (s.trend_kg_per_week ?? 0).toFixed(2);
+}).catch(() => {});
+fetch("volume_stats.json").then(r => r.json()).then(v => {
+  if (v.warnings && v.warnings.length) {
+    const p = document.createElement("p");
+    p.className = "meta";
+    p.textContent = "Warnings: " + v.warnings.slice(0, 10).join("; ");
+    document.querySelector(".wrap").appendChild(p);
+  }
+}).catch(() => {});
 </script>
 </body>
 </html>
