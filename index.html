@@ -772,7 +772,7 @@
     s.appendChild(el("text", { x: cx - r, y: cy + 20, "text-anchor": "middle", class: "tick" },
       fmt1(goal.peak_kg)));
     s.appendChild(el("text", { x: cx + r, y: cy + 20, "text-anchor": "middle", class: "tick" },
-      fmt1(goal.low) + "–" + fmt1(goal.high)));
+      fmt1(goal.high)));
     txt("gauge-r", fmt1(goal.lost_kg) + " kg down · " + fmt1(goal.to_goal_kg) + " kg to go");
   }
 
@@ -803,7 +803,10 @@
     var s = svg(host, W, H);
     s.setAttribute("aria-label", opts.label || "Body weight over time");
 
-    var t0 = dnum(points[0].d), t1 = dnum(points[points.length - 1].d);
+    var tLast = dnum(points[points.length - 1].d);
+    var t0 = dnum(points[0].d), t1 = tLast;
+    /* room on the right for where the trend is heading, kept clear of the data */
+    if (opts.projectDays) t1 += opts.projectDays * 86400000;
     if (t1 === t0) { t0 -= 86400000; t1 += 86400000; }
     var lo = Infinity, hi = -Infinity;
     points.forEach(function (p) { if (p.kg < lo) lo = p.kg; if (p.kg > hi) hi = p.kg; });
@@ -814,7 +817,8 @@
       var b = tl.anchorKg + tl.rate * (t1 - tl.anchorT) / WEEK;
       if (a < lo) lo = a; if (a > hi) hi = a;
       if (b < lo) lo = b; if (b > hi) hi = b;
-      return { x0: tl.from, y0: a, x1: t1, y1: b, color: tl.color, dash: tl.dash };
+      return { x0: tl.from, y0: a, x1: t1, y1: b, color: tl.color, dash: tl.dash,
+               rate: tl.rate, label: tl.label || "trend" };
     });
     if (opts.band) {
       if (opts.band.low < lo) lo = opts.band.low;
@@ -827,15 +831,24 @@
     function Y(v) { return T + ph - (v - lo) / (hi - lo) * ph; }
 
     if (opts.band) {
-      s.appendChild(tipOn(el("rect", {
-        x: L, y: Y(opts.band.high), width: pw,
-        height: Math.max(Y(opts.band.low) - Y(opts.band.high), 1),
-        fill: "var(--good)", "fill-opacity": 0.16
-      }), tk("Goal band") + tv("<b>" + fmt1(opts.band.low) + "–" + fmt1(opts.band.high) + " kg</b>")));
+      var single = Math.abs(opts.band.high - opts.band.low) < 0.05;
+      if (single) {
+        s.appendChild(tipOn(el("line", {
+          x1: L, x2: W - R, y1: Y(opts.band.high), y2: Y(opts.band.high),
+          stroke: "var(--good)", "stroke-width": 1.5, "stroke-dasharray": "1 3"
+        }), tk("Goal") + tv("<b>" + fmt1(opts.band.high) + " kg</b>")));
+      } else {
+        s.appendChild(tipOn(el("rect", {
+          x: L, y: Y(opts.band.high), width: pw,
+          height: Math.max(Y(opts.band.low) - Y(opts.band.high), 1),
+          fill: "var(--good)", "fill-opacity": 0.16
+        }), tk("Goal band") +
+           tv("<b>" + fmt1(opts.band.low) + "–" + fmt1(opts.band.high) + " kg</b>")));
+      }
       s.appendChild(el("text", {
         x: W - R + 4, y: (Y(opts.band.low) + Y(opts.band.high)) / 2 + 3.5,
         class: "dlab", fill: "var(--good)"
-      }, "goal"));
+      }, "goal " + fmt1(opts.band.high)));
     }
 
     var step = (hi - lo) / 4;
@@ -865,6 +878,18 @@
         x1: X(r.x0), y1: Y(r.y0), x2: X(r.x1), y2: Y(r.y1), stroke: r.color,
         "stroke-width": 2, "stroke-dasharray": r.dash, "stroke-linecap": "round"
       }));
+      /* where a ray crosses the goal, say when */
+      if (!opts.band || !r.rate || r.rate >= 0) return;
+      var goalKg = opts.band.high;
+      var cross = r.y0 === r.y1 ? null
+        : r.x0 + (r.y0 - goalKg) / (r.y0 - r.y1) * (r.x1 - r.x0);
+      if (cross === null || cross < tLast || cross > t1) return;
+      s.appendChild(tipOn(el("circle", {
+        cx: X(cross), cy: Y(goalKg), r: 3.4, fill: r.color,
+        stroke: "var(--surface)", "stroke-width": 1.5
+      }), tk(r.label + " · reaches goal") +
+         tv("<b>" + fmt1(goalKg) + " kg</b> on " +
+            longDate(new Date(cross).toISOString().slice(0, 10)))));
     });
 
     var sm = smooth(points, opts.smoothDays);
@@ -907,6 +932,13 @@
         }, p[1]));
       });
     }
+    if (opts.projectDays) {
+      s.appendChild(el("line", { x1: X(tLast), x2: X(tLast), y1: T, y2: T + ph,
+        stroke: "var(--rule)", "stroke-width": 1, "stroke-dasharray": "2 3" }));
+      s.appendChild(el("text", { x: X(tLast) + 5, y: T + 10, class: "tick" },
+        "projected →"));
+    }
+
     /* Milestones: a star where a percentage-lost marker was first reached. */
     (opts.milestones || []).forEach(function (m) {
       if (!m.hit || !m.date) return;
@@ -1767,7 +1799,7 @@
     var setsNow = w.performed[last], setsPrev = w.performed[last - 1];
 
     txt("rail-wt", D.goal.latest_kg ? fmt1(D.goal.latest_kg) + " kg" : "—");
-    txt("rail-goal", fmt1(D.goal.low) + "–" + fmt1(D.goal.high) + " kg");
+    txt("rail-goal", fmt1(D.goal.high) + " kg");
     txt("rail-sets", setsNow + " (" + delta(setsNow - setsPrev) + ")");
     txt("rail-sess", w.sessions[last]);
     txt("rail-last", D.recent.length ? shortDate(D.recent[D.recent.length - 1].d) : "—");
@@ -1909,9 +1941,9 @@
       kpi("kpi-weight", { k: "Body weight", v: fmt1(st.latest_kg), u: "kg",
         n: "on " + longDate(st.latest_date) });
       kpi("kpi-togo", { k: "To goal",
-        v: D.goal.in_band ? "in band" : fmt1(Math.abs(toGoal)),
-        u: D.goal.in_band ? "" : "kg", c: D.goal.in_band ? "good" : null,
-        n: D.goal.in_band ? "inside the band"
+        v: D.goal.reached ? "reached" : fmt1(Math.abs(toGoal)),
+        u: D.goal.reached ? "" : "kg", c: D.goal.reached ? "good" : null,
+        n: D.goal.reached ? "at or under " + fmt1(D.goal.high) + " kg"
            : fmt1(D.goal.lost_kg) + " kg off the " + fmt1(D.goal.peak_kg) + " kg peak" });
       kpi("kpi-rate", { k: "Rate", v: signed(trend), u: "kg/wk",
         c: settled ? (trend >= 0 || fast ? "bad" : "good") : null,
@@ -1920,9 +1952,9 @@
               : "at or under the " + signed(target) + " target")
           : "provisional · " + dense.readings + " readings over " + dense.days + " days" });
       kpi("kpi-eta", { k: "Reaches goal",
-        v: D.goal.in_band ? "—" : fmt(Math.abs(toGoal / target)),
-        u: D.goal.in_band ? "" : "wk",
-        n: D.goal.in_band ? "already in the band"
+        v: D.goal.reached ? "—" : fmt(Math.abs(toGoal / target)),
+        u: D.goal.reached ? "" : "wk",
+        n: D.goal.reached ? "already there"
           : settled ? "at target rate · " + (trend < 0 ? fmt(Math.abs(toGoal / trend)) +
               " wk at the measured rate" : "not losing at present")
           : "at target rate · trend settles in " + settles + " days" });
@@ -1935,11 +1967,15 @@
           width: 760, height: 240, maxGap: 14, label: "Body weight, dense window",
           band: { low: D.goal.low, high: D.goal.high },
           milestones: D.milestones, smoothDays: 5,
+          /* project about twice as far as the window is long, so the readings
+             keep the room they have earned and the horizon grows with them */
+          projectDays: Math.max(10, Math.min(35, dense.days * 2)),
           trends: [
             { from: denseStart, anchorT: dnum(st.latest_date), anchorKg: st.latest_kg,
-              rate: trend, color: "var(--series-1)", dash: "6 4" },
+              rate: trend, color: "var(--series-1)", dash: "6 4",
+              label: settled ? "Measured" : "Measured (provisional)" },
             { from: denseStart, anchorT: dnum(st.latest_date), anchorKg: st.latest_kg,
-              rate: target, color: "var(--good)", dash: "2 4" }
+              rate: target, color: "var(--good)", dash: "2 4", label: "Target" }
           ]
         });
         legend("legend-cut", [

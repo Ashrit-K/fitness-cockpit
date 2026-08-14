@@ -313,26 +313,30 @@ def test_recent_sessions_carry_the_direct_count_for_the_tooltip():
 
 # --------------------------------------------------------------- goal
 
-def test_goal_block_measures_the_gap_to_the_band():
+def test_goal_block_measures_the_gap_to_the_goal():
     series = [{"d": "2026-01-01", "kg": 72.0}, {"d": "2026-03-01", "kg": 69.5}]
     g = report.goal_block(series)
-    assert g["low"] == 64.0 and g["high"] == 65.0
-    assert g["to_goal_kg"] == 4.5
-    assert g["in_band"] is False
+    assert g["high"] == report.GOAL_KG
+    assert g["to_goal_kg"] == round(69.5 - report.GOAL_KG, 1)
+    assert g["reached"] is False
     assert g["peak_kg"] == 72.0
     assert g["lost_kg"] == 2.5
-    assert g["progress_pct"] == pytest.approx(35.7, abs=0.1)   # 2.5 of 7.0
+    assert g["progress_pct"] == pytest.approx(
+        100 * 2.5 / (72.0 - report.GOAL_KG), abs=0.1)
 
 
-def test_goal_block_reports_being_inside_the_band():
+def test_goal_block_reports_the_goal_as_reached_at_or_under_it():
     g = report.goal_block([{"d": "2026-01-01", "kg": 70.0},
-                           {"d": "2026-03-01", "kg": 64.5}])
-    assert g["in_band"] is True
+                           {"d": "2026-03-01", "kg": report.GOAL_KG}])
+    assert g["reached"] is True
     assert g["progress_pct"] == 100.0
+    below = report.goal_block([{"d": "2026-01-01", "kg": 70.0},
+                               {"d": "2026-03-01", "kg": report.GOAL_KG - 1}])
+    assert below["reached"] is True
 
 
 def test_goal_block_survives_an_empty_series():
-    assert report.goal_block([]) == {"low": 64.0, "high": 65.0}
+    assert report.goal_block([]) == {"low": report.GOAL_KG, "high": report.GOAL_KG}
 
 
 # --------------------------------------------------------------- weekly volume

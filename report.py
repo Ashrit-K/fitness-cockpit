@@ -36,9 +36,12 @@ MIN_E1RM_DAYS = 12      # a strength panel needs this many training days
 MIN_LIFESPAN_SETS = 10  # rotation bars ignore anything rarer than this
 BW_SET_SHARE = 0.8      # a movement is bodyweight at this share of 0 kg sets
 
-# The current objective: cut to this band, hold strength, add muscle where possible.
-GOAL_LOW_KG = 64.0
-GOAL_HIGH_KG = 65.0
+# The current objective: reach this weight, hold strength, add muscle where
+# possible. It is one number, not a range — low and high are kept equal so the
+# page can still draw it as a line and the milestone list can end on it.
+GOAL_KG = 64.0
+GOAL_LOW_KG = GOAL_KG
+GOAL_HIGH_KG = GOAL_KG
 
 # Fixed, evenly spaced markers on the way down from the peak.
 MILESTONE_PCTS = [2.5, 5.0, 7.5]
@@ -595,7 +598,8 @@ def goal_block(series):
     goal["latest_kg"] = latest["kg"]
     goal["latest_date"] = latest["d"]
     goal["to_goal_kg"] = round(latest["kg"] - GOAL_HIGH_KG, 1)
-    goal["in_band"] = GOAL_LOW_KG <= latest["kg"] <= GOAL_HIGH_KG
+    goal["reached"] = latest["kg"] <= GOAL_HIGH_KG
+    goal["in_band"] = goal["reached"]        # kept for older page builds
 
     # The start of the cut is the highest reading in the year before the latest one.
     year_ago = (datetime.fromisoformat(latest["d"]).date()
@@ -798,12 +802,12 @@ def build_facts(sessions, m, cal, lay, mon, yrs, cats, reps, e1rm, bw, life, dow
 
 def goal_facts(goal):
     f = {}
-    f["goal_band"] = "%.0f–%.0f kg" % (goal["low"], goal["high"])
+    f["goal_band"] = "%g kg" % goal["high"]
     if "latest_kg" not in goal:
         return f
     f["weight_now"] = "%.1f kg" % goal["latest_kg"]
     f["weight_date"] = goal["latest_date"]
-    f["to_goal"] = ("in band" if goal["in_band"]
+    f["to_goal"] = ("reached" if goal["reached"]
                     else "%.1f kg" % abs(goal["to_goal_kg"]))
     f["lost_so_far"] = "%.1f kg" % goal["lost_kg"]
     f["peak_kg"] = "%.1f kg" % goal["peak_kg"]
