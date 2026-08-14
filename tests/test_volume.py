@@ -70,7 +70,7 @@ def test_unmapped_warning(tmp_path):
                     now=datetime(2026, 8, 14).date())
     assert any("Mystery Lift" in w for w in res["warnings"])
 
-def test_custom_exercise_uses_targets_and_synergists(tmp_path):
+def test_custom_exercise_targets_only(tmp_path):
     hp = write(tmp_path, "history.json", {})
     rec = {"records": [{"id": "1", "text": (
         "2026-08-11 08:27:48 +00:00 / program: \"P\" / dayName: \"D\" / week: 2 / dayInWeek: 1 / duration: 3600s / exercises: {\n"
@@ -89,4 +89,4 @@ def test_custom_exercise_uses_targets_and_synergists(tmp_path):
                     now=datetime(2026, 8, 14).date())
     assert res["groups"]["Back"][-1] == 2      # Erector Spinae
     assert res["groups"]["Glutes"][-1] == 2    # Gluteus Maximus
-    assert res["groups"]["Core"][-1] == 2      # Obliques (synergist)
+    assert res["groups"]["Core"][-1] == 0      # Obliques is synergist — excluded

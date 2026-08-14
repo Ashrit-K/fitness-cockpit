@@ -93,7 +93,7 @@ def aggregate(history_path="history.json", custom_path="custom_exercises.json",
             custom = customs.get(ex["name"])
             muscles = None
             if custom:
-                muscles = list(custom.get("targetMuscles") or []) + list(custom.get("synergistMuscles") or [])
+                muscles = list(custom.get("targetMuscles") or [])
             else:
                 muscles = builtins.get(ex["name"])
             if not muscles:
