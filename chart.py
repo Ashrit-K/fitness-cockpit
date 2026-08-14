@@ -77,18 +77,19 @@ def main():
         slope, intercept = np.polyfit(x, y, 1)
         slope_wk = slope * 7
 
+        cut_dates = [d for d in dates if d >= datetime(2026, 7, 1)]
+        cut_weights = [w for d, w in zip(dates, weights) if d >= datetime(2026, 7, 1)]
+
         xr = np.linspace(0, x.max() + 7, 50)
         trend_dates = [dense_dates[0] + timedelta(days=float(v)) for v in xr]
-        ax2.plot(dense_dates, dense_weights, "o-", color="#c53030", lw=1.8, ms=6,
+        ax2.plot(cut_dates, cut_weights, "o-", color="#c53030", lw=1.8, ms=6,
                  label="daily avg")
         ax2.plot(trend_dates, intercept + slope * xr, "--", color="#dd6b20",
                  label=f"current trend: {slope_wk:+.2f} kg/week")
         ax2.plot(trend_dates, dense_weights[0] + TARGET_KG_PER_DAY * xr, "--",
                  color="#2f855a",
                  label=f"target from {dense_dates[0]:%b %d}: 1 lb/week")
-        ax2.set_title(
-            f"Current cut window ({dense_dates[0]:%b %d} → now)"
-        )
+        ax2.set_title("Cut window (Jul 2026 → now)")
         ax2.legend()
 
     ax2.set_ylabel("kg")
