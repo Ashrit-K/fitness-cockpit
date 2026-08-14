@@ -13,16 +13,17 @@ def parse_weight(s):
         return float(s[:-2]) * LB_KG
     return float(s)
 
-SET_RE = re.compile(r"(\d+)x(\d+)(?:\|(\d+))?\s+([\d.]+)(kg|lb)")
+SET_RE = re.compile(r"(\d+)x(\d+)(?:\|(\d+))?\+?\s+([\d.]+)(kg|lb)")
 
 def _parse_sets(text):
     out = []
     for m in SET_RE.finditer(text):
-        out.append({
-            "reps": int(m.group(2)),
-            "weight_kg": parse_weight(m.group(4) + m.group(5)),
-            "unilateral": m.group(3) is not None,
-        })
+        for _ in range(int(m.group(1))):
+            out.append({
+                "reps": int(m.group(2)),
+                "weight_kg": parse_weight(m.group(4) + m.group(5)),
+                "unilateral": m.group(3) is not None,
+            })
     return out
 
 def parse_record(text):
@@ -50,8 +51,9 @@ def parse_record(text):
             continue
         name, _, detail = block.partition(" / ")
         detail = re.sub(r"\s*//.*$", "", detail, flags=re.M)
-        work, _, rest = detail.partition(" / warmup:")
-        warm = rest.partition(" / target:")[0].strip()
+        work_part, sep, after = detail.partition(" / warmup:")
+        warm = after.partition(" / target:")[0].strip() if sep else ""
+        work = work_part.partition(" / target:")[0].strip()
         exercises.append({
             "name": name.strip(),
             "sets": _parse_sets(work),

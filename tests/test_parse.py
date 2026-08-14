@@ -50,3 +50,23 @@ def test_comment_lines_ignored():
 def test_malformed_raises():
     with pytest.raises(ParseError):
         parse_record("not a liftohistory record")
+
+
+def test_no_warmup_no_target_double_count():
+    text = ("2026-08-12 09:00:00 +00:00 / program: \"P\" / dayName: \"D\" / "
+            "week: 1 / dayInWeek: 1 / duration: 3000s / exercises: {\n"
+            "  Bird Dog / 1x4 0kg / target: 1x4 0kg 15s\n"
+            "}")
+    r = parse_record(text)
+    assert len(r["exercises"][0]["sets"]) == 1
+
+
+def test_amrap_plus_set_parsed():
+    text = ("2026-08-12 09:00:00 +00:00 / program: \"P\" / dayName: \"D\" / "
+            "week: 1 / dayInWeek: 1 / duration: 3000s / exercises: {\n"
+            "  Bench Press / 3x8 60kg, 1x5+ 70kg / target: 3x8-12 60kg @8 90s\n"
+            "}")
+    r = parse_record(text)
+    sets = r["exercises"][0]["sets"]
+    assert len(sets) == 4
+    assert sets[3] == {"reps": 5, "weight_kg": 70.0, "unilateral": False}
