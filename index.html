@@ -661,10 +661,15 @@
 
   /* ============================================================ NOW: WEIGHT */
 
-  function goalTiles(goal, st) {
+  /* A rate measured over less than this many days of dense weigh-ins is still
+     water and glycogen as much as fat. The page reports it, but does not judge it. */
+  var TREND_MIN_DAYS = 14;
+
+  function goalTiles(goal, st, dense) {
     var toGoal = goal.latest_kg - goal.high;
     var trend = st ? st.trend_kg_per_week : null;
     var target = st ? st.target_kg_per_week : -0.4536;
+    var settled = dense && dense.days >= TREND_MIN_DAYS;
     var list = [
       { k: "Body weight", v: fmt1(goal.latest_kg), u: " kg",
         n: "on " + longDate(goal.latest_date) },
@@ -679,22 +684,32 @@
         n: "of the way from peak to goal" }
     ];
     if (trend !== null) {
-      var tooFast = trend < 0 && Math.abs(trend) > Math.abs(target) * 1.5;
+      var fast = trend < 0 && Math.abs(trend) > Math.abs(target) * 1.5;
       var gaining = trend >= 0;
+      var note;
+      if (!settled) {
+        note = "provisional · " + dense.readings + " readings over " + dense.days +
+               " days · target " + signed(target);
+      } else if (gaining) {
+        note = "gaining — target " + signed(target);
+      } else if (fast) {
+        note = "faster than the " + signed(target) + " target";
+      } else {
+        note = "at or under the " + signed(target) + " target";
+      }
       list.push({
         k: "Rate", v: signed(trend), u: " kg/wk",
-        c: gaining || tooFast ? "bad" : "good",
-        n: gaining ? "gaining — target " + signed(target)
-          : tooFast ? "faster than the " + signed(target) + " target"
-          : "at or under the " + signed(target) + " target"
+        c: settled ? (gaining || fast ? "bad" : "good") : null,
+        n: note
       });
       var weeks = trend < 0 ? Math.abs(toGoal / trend) : null;
       var wkTarget = Math.abs(toGoal / target);
       list.push({
         k: "Reaches goal", v: goal.in_band ? "—" : fmt(wkTarget), u: goal.in_band ? "" : " wk",
         n: goal.in_band ? "already in the band"
-          : "at target rate · " + (weeks !== null ? fmt(weeks) + " wk at the measured rate"
-                                                  : "not losing at present")
+          : "at target rate · " + (!settled ? "measured rate still settling"
+              : weeks !== null ? fmt(weeks) + " wk at the measured rate"
+              : "not losing at present")
       });
     }
     tiles("stats-goal", list);
@@ -1666,18 +1681,25 @@
     });
 
     loadJSON("stats.json").then(function (st) {
-      draw("stats-goal", function () { goalTiles(D.goal, st); });
-      var dense = new Date(dnum(st.dense_start));
-      var cutFrom = Date.UTC(dense.getUTCFullYear(), dense.getUTCMonth() - 1, 1);
+      var denseStart = dnum(st.dense_start);
+      var denseDays = D.weight.filter(function (p) { return dnum(p.d) >= denseStart; });
+      var dense = {
+        readings: denseDays.length,
+        days: Math.round((dnum(st.latest_date) - denseStart) / 86400000) + 1
+      };
+      var settles = Math.max(0, TREND_MIN_DAYS - dense.days);
+      draw("stats-goal", function () { goalTiles(D.goal, st, dense); });
+      var d0 = new Date(denseStart);
+      var cutFrom = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() - 1, 1);
       var cut = D.weight.filter(function (p) { return dnum(p.d) >= cutFrom; });
       readout("ro-weight", [
         { k: "Now", v: fmt1(st.latest_kg) + " kg" },
         { k: "Goal", v: fmt1(D.goal.low) + "–" + fmt1(D.goal.high) + " kg" },
         { k: "To go", v: D.goal.in_band ? "in band" : fmt1(D.goal.to_goal_kg) + " kg" },
-        { k: "Measured rate", v: signed(st.trend_kg_per_week) + " kg/wk",
-          c: st.trend_kg_per_week < 0 ? "down" : "up" },
+        { k: "Measured rate", v: signed(st.trend_kg_per_week) + " kg/wk" },
         { k: "Target rate", v: signed(st.target_kg_per_week) + " kg/wk" },
-        { k: "Since", v: longDate(st.dense_start) }
+        { k: "Dense window", v: dense.readings + " readings · " + dense.days + " days" },
+        { k: "Trend settles", v: settles ? "in " + settles + " days" : "enough data" }
       ]);
       draw("fig-cut", function () {
         if (cut.length < 2) throw new Error("cut window too short");
@@ -1701,7 +1723,7 @@
         ]);
       });
     }).catch(function () {
-      draw("stats-goal", function () { goalTiles(D.goal, null); });
+      draw("stats-goal", function () { goalTiles(D.goal, null, null); });
       unavailable("fig-cut");
     });
 
