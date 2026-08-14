@@ -73,7 +73,7 @@ def test_unmapped_warning(tmp_path):
                     now=datetime(2026, 8, 14).date())
     assert any("Mystery Lift" in w for w in res["warnings"])
 
-def test_custom_exercise_targets_only(tmp_path):
+def test_custom_exercise_synergists_count_half(tmp_path):
     hp = write(tmp_path, "history.json", {})
     rec = {"records": [{"id": "1", "text": (
         "2026-08-11 08:27:48 +00:00 / program: \"P\" / dayName: \"D\" / week: 2 / dayInWeek: 1 / duration: 3600s / exercises: {\n"
@@ -90,6 +90,9 @@ def test_custom_exercise_targets_only(tmp_path):
     mp = write(tmp_path, "muscle_map.json", {})
     res = aggregate(history_path=hp, custom_path=cp, map_path=mp,
                     now=datetime(2026, 8, 14).date())
-    assert res["groups"]["Back"][-1] == 2      # Erector Spinae
-    assert res["groups"]["Glutes"][-1] == 2    # Gluteus Maximus
-    assert res["groups"]["Core"][-1] == 0      # Obliques is synergist — excluded
+    assert res["groups"]["Back"][-1] == 2      # Erector Spinae, targeted
+    assert res["groups"]["Glutes"][-1] == 2    # Gluteus Maximus, targeted
+    assert res["groups"]["Core"][-1] == 1      # Obliques assists — 2 sets at 0.5
+    assert res["direct"]["Back"][-1] == 2
+    assert res["indirect"]["Core"][-1] == 2
+    assert res["performed"][-1] == 2           # two sets were actually done

@@ -39,6 +39,9 @@ BW_SET_SHARE = 0.8      # a movement is bodyweight at this share of 0 kg sets
 GOAL_LOW_KG = 64.0
 GOAL_HIGH_KG = 65.0
 
+# Fixed, evenly spaced markers on the way down from the peak.
+MILESTONE_PCTS = [2.5, 5.0, 7.5]
+
 # Strength retention compares a recent window against the year before it.
 WATCH_DAYS = 56
 BASELINE_DAYS = 365
@@ -572,6 +575,52 @@ def goal_block(series):
     return goal
 
 
+def milestones(series, goal):
+    """Percentage-lost markers from the peak, plus the goal band as the last one.
+
+    Fixed and evenly spaced, so each one arrives as its own event rather than
+    moving with the data.
+    """
+    if not series or "peak_kg" not in goal:
+        return []
+    peak, peak_date = goal["peak_kg"], goal["peak_date"]
+    after = [p for p in series if p["d"] >= peak_date]
+    out = []
+    for pct in MILESTONE_PCTS:
+        kg = round(peak * (1 - pct / 100.0), 1)
+        hit = next((p for p in after if p["kg"] <= kg), None)
+        out.append({"pct": pct, "kg": kg, "label": "%g%% lost" % pct,
+                    "hit": hit is not None,
+                    "date": hit["d"] if hit else None,
+                    "goal": False})
+    goal_pct = round(100 * (peak - goal["high"]) / peak, 1)
+    hit = next((p for p in after if p["kg"] <= goal["high"]), None)
+    out.append({"pct": goal_pct, "kg": goal["high"], "label": "goal",
+                "hit": hit is not None,
+                "date": hit["d"] if hit else None,
+                "goal": True})
+    out.sort(key=lambda m: m["pct"])
+    return out
+
+
+def milestone_facts(ms, series):
+    f = {}
+    if not ms:
+        return f
+    done = [m for m in ms if m["hit"]]
+    todo = [m for m in ms if not m["hit"]]
+    f["milestones_hit"] = "%d of %d" % (len(done), len(ms))
+    if done:
+        f["last_milestone"] = done[-1]["label"]
+        f["last_milestone_date"] = done[-1]["date"]
+    if todo and series:
+        nxt = todo[0]
+        f["next_milestone"] = nxt["label"]
+        f["next_milestone_kg"] = "%.1f kg" % nxt["kg"]
+        f["to_next_milestone"] = "%.1f kg" % (series[-1]["kg"] - nxt["kg"])
+    return f
+
+
 def bodyweight_series(weights):
     """Daily-averaged body weight in kg, oldest first."""
     by_day = defaultdict(list)
@@ -826,6 +875,7 @@ def build(records, weights, customs, builtins, now=None):
     dow = dow_matrix(sessions)
     series = bodyweight_series(weights)
     goal = goal_block(series)
+    marks = milestones(series, goal)
     vol = weekly_volume(sessions, customs, builtins, now=now)
     recent = recent_sessions(sessions, customs, builtins)
     watch = strength_watch(sessions, now)
@@ -835,12 +885,14 @@ def build(records, weights, customs, builtins, now=None):
     facts = build_facts(sessions, m, cal, lay, mon, yrs, cats, reps,
                         e1rm, bw, life, dow)
     facts.update(goal_facts(goal))
+    facts.update(milestone_facts(marks, series))
     facts.update(volume_facts(vol, recent, watch))
 
     return {
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "meta": m,
         "goal": goal,
+        "milestones": marks,
         "weekly": vol,
         "recent": recent,
         "watch": watch,

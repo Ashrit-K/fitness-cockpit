@@ -170,6 +170,21 @@
   }
   .meter.key { border-color: color-mix(in srgb, var(--accent) 55%, var(--edge)); }
 
+  /* ---------- milestone chips ---------- */
+  .miles { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+  .mile {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px;
+    border: 1px solid var(--edge); border-radius: 999px;
+    font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+  }
+  .mile.hit {
+    color: var(--ink); border-color: color-mix(in srgb, var(--series-4) 55%, var(--edge));
+    background: color-mix(in srgb, var(--series-4) 12%, transparent);
+  }
+  .mile.next { border-color: var(--rule); color: var(--ink-2); }
+  .mile .st { color: var(--series-4); }
+  .mile .kg { color: var(--muted); }
+
   /* ---------- compact readout row ---------- */
   .readout {
     display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 10px;
@@ -296,6 +311,7 @@
     <div class="card p4">
       <p class="card-h">Peak → goal <span class="r" id="gauge-r">—</span></p>
       <div id="gauge"></div>
+      <div class="miles" id="milestones"></div>
     </div>
     <div class="card p8">
       <p class="card-h">Dense window <span class="r" id="cut-r">—</span></p>
@@ -547,6 +563,36 @@
     return d;
   }
   function txt(id, s) { var n = document.getElementById(id); if (n) n.textContent = s; }
+  /* a five-pointed star, drawn as a path so it scales with the chart */
+  function starPath(cx, cy, r) {
+    var d = "";
+    for (var i = 0; i < 10; i++) {
+      var rad = i % 2 ? r * 0.44 : r;
+      var a = -Math.PI / 2 + i * Math.PI / 5;
+      d += (i ? "L" : "M") + (cx + rad * Math.cos(a)).toFixed(2) + " " +
+           (cy + rad * Math.sin(a)).toFixed(2);
+    }
+    return d + "Z";
+  }
+  /* A daily weigh-in carries water, food and glycogen noise. This is a
+     Gaussian-weighted mean over a time window — no fitted curve, so it cannot
+     invent a shape the readings do not hold. Weight is by day, not by index,
+     so an irregular gap between weigh-ins does not distort it. */
+  function smooth(points, windowDays) {
+    if (!windowDays || points.length < 3) return points.map(function (p) { return p.kg; });
+    var sigma = windowDays / 3;
+    return points.map(function (p) {
+      var t = dnum(p.d), num = 0, den = 0;
+      points.forEach(function (q) {
+        var dt = (dnum(q.d) - t) / 86400000;
+        if (Math.abs(dt) > windowDays) return;
+        var w = Math.exp(-0.5 * (dt / sigma) * (dt / sigma));
+        num += w * q.kg;
+        den += w;
+      });
+      return den ? num / den : p.kg;
+    });
+  }
 
   var tip = document.getElementById("tip");
   document.addEventListener("pointerover", function (e) {
@@ -713,6 +759,25 @@
     txt("gauge-r", fmt1(goal.lost_kg) + " kg down · " + fmt1(goal.to_goal_kg) + " kg to go");
   }
 
+  /* Fixed markers on the way down, so each arrival is its own event. */
+  function milestoneChips(ms, latestKg) {
+    var host = document.getElementById("milestones");
+    host.innerHTML = "";
+    var nextShown = false;
+    ms.forEach(function (m) {
+      var chip = document.createElement("span");
+      var isNext = !m.hit && !nextShown;
+      if (isNext) nextShown = true;
+      chip.className = "mile" + (m.hit ? " hit" : isNext ? " next" : "");
+      chip.innerHTML = (m.hit ? '<span class="st">★</span>' : "") + m.label +
+        ' <span class="kg">' + fmt1(m.kg) + "</span>";
+      tipOn(chip, tk(m.label) + tv(m.hit
+        ? "<b>" + fmt1(m.kg) + " kg</b> reached on " + longDate(m.date)
+        : "<b>" + fmt1(m.kg) + " kg</b> · " + fmt1(latestKg - m.kg) + " kg to go"));
+      host.appendChild(chip);
+    });
+  }
+
   function weightChart(host, points, opts) {
     opts = opts || {};
     var W = opts.width || 900, H = opts.height || 260;
@@ -785,9 +850,10 @@
       }));
     });
 
+    var sm = smooth(points, opts.smoothDays);
     s.appendChild(el("path", {
-      d: brokenPath(points.map(function (p) {
-        return { x: X(dnum(p.d)), y: Y(p.kg), t: dnum(p.d) };
+      d: brokenPath(points.map(function (p, i) {
+        return { x: X(dnum(p.d)), y: Y(sm[i]), t: dnum(p.d) };
       }), opts.maxGap || 120),
       class: "line", stroke: "var(--series-1)",
       "stroke-opacity": points.length > 200 ? 0.8 : 1,
@@ -796,9 +862,13 @@
     if (points.length <= 200) {
       points.forEach(function (p) {
         s.appendChild(tipOn(el("circle", {
-          cx: X(dnum(p.d)), cy: Y(p.kg), r: 4, fill: "var(--series-1)",
-          stroke: "var(--surface)", "stroke-width": 2
-        }), tk(longDate(p.d)) + tv("<b>" + fmt1(p.kg) + " kg</b>")));
+          cx: X(dnum(p.d)), cy: Y(p.kg), r: 3.2, fill: "var(--series-1)",
+          "fill-opacity": opts.smoothDays ? 0.5 : 1,
+          stroke: "var(--surface)", "stroke-width": 1.5
+        }), tk(longDate(p.d)) +
+           tv("<b>" + fmt1(p.kg) + " kg</b> logged" +
+              (opts.smoothDays ? "<br>" + fmt1(sm[points.indexOf(p)]) +
+                                 " kg smoothed" : ""))));
       });
     } else {
       points.forEach(function (p) {
@@ -820,6 +890,24 @@
         }, p[1]));
       });
     }
+    /* Milestones: a star where a percentage-lost marker was first reached. */
+    (opts.milestones || []).forEach(function (m) {
+      if (!m.hit || !m.date) return;
+      var t = dnum(m.date);
+      if (t < t0 || t > t1) return;
+      var at = points.filter(function (p) { return dnum(p.d) === t; })[0];
+      var x = X(t), y = Y(at ? at.kg : m.kg);
+      var g = el("g", null);
+      g.appendChild(el("path", { d: starPath(x, y - 14, 7), fill: "var(--series-4)",
+        stroke: "var(--surface)", "stroke-width": 1 }));
+      g.appendChild(el("text", { x: x, y: y - 25, class: "dlab", "text-anchor": "middle",
+        fill: "var(--series-4)" }, m.label));
+      tipOn(g, tk(m.label) + tv("<b>" + fmt1(m.kg) + " kg</b> first reached on " +
+        longDate(m.date)));
+      s.appendChild(g);
+    });
+
+    /* the last reading is labelled above the point, clear of the trend rays */
     var lastp = points[points.length - 1];
     var lastX = X(dnum(lastp.d)), atEdge = lastX + 40 > W - 2;
     s.appendChild(el("text", {
@@ -1588,7 +1676,10 @@
     txt("rail-sess", w.sessions[last]);
     txt("rail-last", D.recent.length ? shortDate(D.recent[D.recent.length - 1].d) : "—");
 
-    draw("gauge", function () { gauge(D.goal); });
+    draw("gauge", function () {
+      gauge(D.goal);
+      milestoneChips(D.milestones, D.goal.latest_kg);
+    });
 
     /* volume tiles */
     var atTarget = GROUPS.filter(function (g) { return w.sets[g][last] >= BAND_LOW; });
@@ -1697,7 +1788,8 @@
     draw("fig-history", function () {
       if (!D.weight.length) throw new Error("no weigh-ins");
       weightChart("fig-history", D.weight, { width: 1220, height: 240, marks: true,
-        label: "Body weight, full history", band: { low: D.goal.low, high: D.goal.high } });
+        label: "Body weight, full history", band: { low: D.goal.low, high: D.goal.high },
+        milestones: D.milestones, smoothDays: 21 });
       txt("hist-r", longDate(D.weight[0].d) + " → " +
           longDate(D.weight[D.weight.length - 1].d) + " · " + D.weight.length + " days");
     });
@@ -1743,6 +1835,7 @@
         weightChart("fig-cut", cut, {
           width: 760, height: 240, maxGap: 14, label: "Body weight, dense window",
           band: { low: D.goal.low, high: D.goal.high },
+          milestones: D.milestones, smoothDays: 5,
           trends: [
             { from: denseStart, anchorT: dnum(st.latest_date), anchorKg: st.latest_kg,
               rate: trend, color: "var(--series-1)", dash: "6 4" },
