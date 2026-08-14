@@ -112,10 +112,12 @@ does the I/O. Every function takes data and returns data, so tests never touch t
 - **Categories** are the ten `BROAD_GROUPS`, rolled to Chest / Back / Shoulders / Arms / Legs /
   Core for the share chart. A set counts once per target group, as `volume.py` already does.
 - **e1RM** uses Epley, `w × (1 + reps/30)`, best set per training day, sets above 15 reps
-  excluded. Only free-weight lifts qualify — an exercise is free weight when its name contains
-  `Dumbbell` or `Barbell`, or is a known barbell lift (`Bench Press`, `Squat`, `Deadlift`,
-  `Overhead Press`). Machine and cable loads are not comparable across gyms, so they are out.
-  A panel needs at least 12 qualifying days. The line is a 5-session rolling median.
+  excluded. Machine and cable loads are not comparable across gyms, so an exercise is
+  disqualified when its name holds `Leverage Machine`, `Machine`, `Cable`, `Pulldown` or
+  `Pushdown`. Everything else that carries load qualifies — the log names most free weights
+  without an equipment suffix, so a `Dumbbell`/`Barbell` allow-list would drop Lateral Raise,
+  Shoulder Press and Bicep Curl. The six lifts with the most qualifying days get panels; a panel
+  needs at least 12 such days. The line is a 5-session rolling median.
 - **Bodyweight movements** are exercises whose sets are all 0 kg on at least half their days.
 - **Lifespans** run from an exercise's first work set to its last. Exercises with fewer than
   10 total sets are dropped to keep the chart legible.
