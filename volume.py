@@ -1,52 +1,8 @@
 import json
 from datetime import datetime, timedelta, timezone
 
+from groups import BROAD_GROUPS, MUSCLE_TO_GROUP, muscles_for
 from lifto_parse import parse_record, ParseError
-
-BROAD_GROUPS = ["Chest", "Back", "Shoulders", "Biceps", "Triceps",
-                "Quads", "Hamstrings", "Glutes", "Core", "Calves"]
-
-MUSCLE_TO_GROUP = {
-    "Pectoralis Major Clavicular Head": "Chest",
-    "Pectoralis Major Sternal Head": "Chest",
-    "Serratus Anterior": "Chest",
-    "Latissimus Dorsi": "Back",
-    "Trapezius Lower Fibers": "Back",
-    "Trapezius Middle Fibers": "Back",
-    "Trapezius Upper Fibers": "Back",
-    "Teres Major": "Back",
-    "Teres Minor": "Back",
-    "Infraspinatus": "Back",
-    "Erector Spinae": "Back",
-    "Levator Scapulae": "Back",
-    "Splenius": "Back",
-    "Deltoid Anterior": "Shoulders",
-    "Deltoid Lateral": "Shoulders",
-    "Deltoid Posterior": "Shoulders",
-    "Biceps Brachii": "Biceps",
-    "Brachialis": "Biceps",
-    "Brachioradialis": "Biceps",
-    "Triceps Brachii": "Triceps",
-    "Quadriceps": "Quads",
-    "Sartorius": "Quads",
-    "Hamstrings": "Hamstrings",
-    "Gluteus Maximus": "Glutes",
-    "Gluteus Medius": "Glutes",
-    "Adductor Brevis": "Glutes",
-    "Adductor Longus": "Glutes",
-    "Adductor Magnus": "Glutes",
-    "Pectineous": "Glutes",
-    "Tensor Fasciae Latae": "Glutes",
-    "Rectus Abdominis": "Core",
-    "Obliques": "Core",
-    "Iliopsoas": "Core",
-    "Gastrocnemius": "Calves",
-    "Soleus": "Calves",
-    "Tibialis Anterior": "Calves",
-    "Sternocleidomastoid": "Back",
-    "Wrist Extensors": "Biceps",
-    "Wrist Flexors": "Biceps",
-}
 
 def monday(d):
     return d - timedelta(days=d.weekday())
@@ -91,12 +47,7 @@ def aggregate(history_path="history.json", custom_path="custom_exercises.json",
         i = week_idx[wk]
         session_dates[i].add(dt.date().isoformat())
         for ex in parsed["exercises"]:
-            custom = customs.get(ex["name"])
-            muscles = None
-            if custom:
-                muscles = list(custom.get("targetMuscles") or [])
-            else:
-                muscles = builtins.get(ex["name"])
+            muscles = muscles_for(ex["name"], customs, builtins)
             if not muscles:
                 warnings.append(f"unmapped: {ex['name']}")
                 continue

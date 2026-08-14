@@ -1,0 +1,256 @@
+import pytest
+
+import report
+from groups import muscles_for
+
+
+def rec(date, body, duration=3600):
+    """Build one raw history record. `body` is the exercises block."""
+    return {"id": date, "text": (
+        f'{date} +00:00 / program: "P" / dayName: "D" / week: 1 / dayInWeek: 1 '
+        f"/ duration: {duration}s / exercises: {{\n{body}\n}}"
+    )}
+
+
+def sessions(*records):
+    return report.load_sessions(list(records))
+
+
+# --------------------------------------------------------------- ingest
+
+def test_cardio_excluded():
+    s = sessions(rec("2026-01-05 09:00:00",
+                     "  Incline Walking / 1x30 0kg\n  Bench Press / 3x8 60kg"))
+    assert len(s) == 1
+    assert [n for n, _ in report.all_sets(s[0])] == ["Bench Press"] * 3
+
+
+def test_cardio_only_session_dropped():
+    assert sessions(rec("2026-01-05 09:00:00", "  Incline Walking / 1x30 0kg")) == []
+
+
+def test_warmups_excluded():
+    s = sessions(rec("2026-01-05 09:00:00",
+                     "  Bench Press / 2x8 60kg / warmup: 1x12 40kg"))
+    assert report.n_sets(s[0]) == 2
+
+
+def test_sessions_sorted_oldest_first():
+    s = sessions(rec("2026-03-01 09:00:00", "  Bench Press / 1x8 60kg"),
+                 rec("2026-01-01 09:00:00", "  Bench Press / 1x8 60kg"))
+    assert [x["date"].month for x in s] == [1, 3]
+
+
+# --------------------------------------------------------------- calendar
+
+def test_calendar_buckets_by_iso_week():
+    # 2026-01-05 and 2026-01-08 are both in ISO week 2 of 2026.
+    s = sessions(rec("2026-01-05 09:00:00", "  Bench Press / 3x8 60kg"),
+                 rec("2026-01-08 09:00:00", "  Bench Press / 2x8 60kg"))
+    cells = report.calendar_cells(s)
+    assert len(cells) == 1
+    assert cells[0]["y"] == 2026 and cells[0]["w"] == 2
+    assert cells[0]["n"] == 2 and cells[0]["s"] == 5
+    assert cells[0]["d"] == "2026-01-05"   # the Monday of that week
+
+
+def test_layoff_boundary_is_exclusive_at_21_days():
+    body = "  Bench Press / 1x8 60kg"
+    s = sessions(rec("2026-01-01 09:00:00", body),
+                 rec("2026-01-22 09:00:00", body),   # exactly 21 days — not a layoff
+                 rec("2026-02-20 09:00:00", body))   # 29 days — a layoff
+    gaps = report.layoffs(s)
+    assert len(gaps) == 1
+    assert gaps[0] == {"from": "2026-01-22", "to": "2026-02-20", "days": 29}
+
+
+def test_layoffs_use_distinct_days_not_records():
+    body = "  Bench Press / 1x8 60kg"
+    s = sessions(rec("2026-01-01 09:00:00", body),
+                 rec("2026-01-01 18:00:00", body))
+    assert report.layoffs(s) == []
+
+
+# --------------------------------------------------------------- monthly
+
+def test_monthly_fills_empty_months():
+    body = "  Bench Press / 2x8 60kg"
+    s = sessions(rec("2026-01-05 09:00:00", body),
+                 rec("2026-04-05 09:00:00", body))
+    mon = report.monthly(s)
+    assert [m["m"] for m in mon] == ["2026-01", "2026-02", "2026-03", "2026-04"]
+    assert [m["sessions"] for m in mon] == [1, 0, 0, 1]
+
+
+def test_monthly_avg12_is_trailing():
+    body = "  Bench Press / 1x8 60kg"
+    s = sessions(rec("2026-01-05 09:00:00", body),
+                 rec("2026-02-05 09:00:00", body),
+                 rec("2026-02-06 09:00:00", body))
+    mon = report.monthly(s)
+    assert mon[0]["avg12"] == 1.0          # one month, one session
+    assert mon[1]["avg12"] == 1.5          # (1 + 2) / 2
+
+
+# --------------------------------------------------------------- yearly
+
+def test_yearly_bodyweight_share_and_density():
+    s = sessions(rec("2026-01-05 09:00:00",
+                     "  Pull Up / 3x8 0kg\n  Bench Press / 1x8 60kg", duration=3000))
+    y = report.yearly(s)[0]
+    assert y["sets"] == 4
+    assert y["spy"] == 4.0
+    assert y["bw_share"] == 75.0
+    assert y["median_min"] == 50
+    assert y["tonnage"] == pytest.approx(8 * 60)
+
+
+# --------------------------------------------------------------- rep bins
+
+@pytest.mark.parametrize("reps,expected", [
+    (1, "1–5"), (5, "1–5"), (6, "6–8"), (8, "6–8"), (9, "9–12"),
+    (12, "9–12"), (13, "13–20"), (20, "13–20"), (21, "21+"), (60, "21+"),
+])
+def test_rep_bin_edges(reps, expected):
+    s = sessions(rec("2026-01-05 09:00:00", f"  Bench Press / 1x{reps} 60kg"))
+    dist = report.rep_shares(s)
+    assert dist["overall"][expected] == 100.0
+
+
+# --------------------------------------------------------------- strength
+
+def test_epley():
+    assert report.epley(100, 0) == 100
+    assert report.epley(60, 10) == pytest.approx(80.0)
+
+
+@pytest.mark.parametrize("name,free", [
+    ("Bench Press, Dumbbell", True),
+    ("Overhead Press", True),
+    ("Seated Row, Leverage Machine", False),
+    ("Lateral Raise, Cable", False),
+    ("Lat Pulldown", False),
+    ("Triceps Pushdown", False),
+])
+def test_free_weight_filter(name, free):
+    assert report.is_free_weight(name) is free
+
+
+def _many(name, days, reps=10, weight=60):
+    out = []
+    for i in range(days):
+        out.append(rec("2026-01-%02d 09:00:00" % (i + 1),
+                       f"  {name} / 1x{reps} {weight}kg"))
+    return out
+
+
+def test_e1rm_needs_minimum_days():
+    s = sessions(*_many("Bench Press", report.MIN_E1RM_DAYS - 1))
+    assert report.e1rm_panels(s) == []
+
+
+def test_e1rm_takes_best_set_of_the_day_and_skips_high_reps():
+    days = _many("Bench Press", report.MIN_E1RM_DAYS)
+    days[0] = rec("2026-01-01 09:00:00",
+                  "  Bench Press / 1x10 60kg, 1x5 70kg, 1x20 100kg")
+    panels = report.e1rm_panels(sessions(*days))
+    assert panels[0]["points"][0]["v"] == pytest.approx(81.7, abs=0.05)  # 70×(1+5/30)
+
+
+def test_e1rm_excludes_machines():
+    s = sessions(*_many("Seated Row, Leverage Machine", 30))
+    assert report.e1rm_panels(s) == []
+
+
+# --------------------------------------------------------------- bodyweight
+
+def test_bodyweight_moves_need_mostly_unloaded_sets():
+    loaded = [rec("2026-02-%02d 09:00:00" % (i + 1), "  Pull Up / 1x10 20kg")
+              for i in range(28)]
+    unloaded = [rec("2026-01-%02d 09:00:00" % (i + 1), "  Pull Up / 2x10 0kg")
+                for i in range(28)]
+    assert report.bodyweight_moves(sessions(*unloaded))["order"] == ["Pull Up"]
+    assert report.bodyweight_moves(sessions(*(unloaded + loaded)))["order"] == []
+
+
+def test_bodyweight_series_converts_pounds():
+    series = report.bodyweight_series({"values": [
+        {"date": "2026-01-01T00:00:00Z", "value": "100lb"},
+        {"date": "2026-01-02T00:00:00Z", "value": "70kg"},
+        {"date": "2026-01-02T12:00:00Z", "value": "72kg"},
+    ]})
+    assert series[0]["kg"] == pytest.approx(45.36, abs=0.01)
+    assert series[1]["kg"] == pytest.approx(71.0)
+
+
+# --------------------------------------------------------------- rotation
+
+def test_lifespans_bounds_and_floor():
+    rare = rec("2026-01-01 09:00:00", "  Front Raise / 1x10 10kg")
+    common = [rec("2026-0%d-01 09:00:00" % m, "  Bench Press / 5x8 60kg")
+              for m in (1, 2, 3)]
+    life = report.lifespans(sessions(rare, *common), {}, {})
+    assert [r["name"] for r in life] == ["Bench Press"]
+    assert life[0]["first"] == "2026-01-01"
+    assert life[0]["last"] == "2026-03-01"
+    assert life[0]["sets"] == 15
+
+
+# --------------------------------------------------------------- timing
+
+def test_dow_matrix_applies_ist_offset():
+    # 2026-01-05 is a Monday. 20:00 UTC + 5:30 = 01:30 Tuesday.
+    s = sessions(rec("2026-01-05 20:00:00", "  Bench Press / 1x8 60kg"))
+    m = report.dow_matrix(s)
+    assert m[1][1] == 1
+    assert sum(sum(row) for row in m) == 1
+
+
+def test_dow_matrix_shape():
+    s = sessions(rec("2026-01-05 09:00:00", "  Bench Press / 1x8 60kg"))
+    m = report.dow_matrix(s)
+    assert len(m) == 7 and all(len(row) == 24 for row in m)
+
+
+# --------------------------------------------------------------- categories
+
+MAP = {"Bench Press": ["Pectoralis Major Sternal Head", "Triceps Brachii"],
+       "Lat Pulldown": ["Latissimus Dorsi"]}
+
+
+def test_category_share_counts_a_set_once_per_category():
+    s = sessions(rec("2026-01-05 09:00:00", "  Bench Press / 1x8 60kg"))
+    cats = report.category_shares(s, {}, MAP)
+    assert cats["raw"]["Chest"] == [1]
+    assert cats["raw"]["Arms"] == [1]
+    assert cats["byYear"]["Chest"] == [50.0]
+
+
+def test_equipment_suffix_falls_back_to_base_name():
+    assert muscles_for("Lat Pulldown, Leverage Machine", {}, MAP) == ["Latissimus Dorsi"]
+    assert muscles_for("Nothing At All, Cable", {}, MAP) == []
+
+
+def test_unmapped_names_are_reported():
+    s = sessions(rec("2026-01-05 09:00:00", "  Mystery Lift / 1x8 60kg"))
+    assert report.category_shares(s, {}, MAP)["unmapped"] == ["Mystery Lift"]
+
+
+# --------------------------------------------------------------- assembly
+
+def test_build_produces_every_section():
+    records = _many("Bench Press", 20) + [
+        rec("2026-02-01 09:00:00", "  Pull Up / 3x10 0kg")]
+    out = report.build(records, {"values": []}, {}, MAP,
+                       now=report.datetime(2026, 2, 2).date())
+    for key in ("meta", "facts", "calendar", "layoffs", "months", "years",
+                "categories", "reps", "e1rm", "bodyweightMoves", "lifespans",
+                "dow", "weight", "notes"):
+        assert key in out
+    assert out["meta"]["sessions"] == 21
+    assert out["meta"]["active_now"] == 2
+
+
+def test_build_rejects_empty_history():
+    with pytest.raises(ValueError):
+        report.build([], {"values": []}, {}, {})
