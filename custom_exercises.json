@@ -37,6 +37,41 @@
       ]
     },
     {
+      "id": "nmwhbmnq",
+      "name": "Deficit Push Up",
+      "targetMuscles": [
+        "Pectoralis Major Sternal Head",
+        "Triceps Brachii"
+      ],
+      "synergistMuscles": [
+        "Pectoralis Major Clavicular Head",
+        "Deltoid Anterior",
+        "Serratus Anterior"
+      ],
+      "types": [
+        "push",
+        "upper"
+      ]
+    },
+    {
+      "id": "hkjmwtcr",
+      "name": "Deficit Reverse Lunge",
+      "targetMuscles": [
+        "Quadriceps",
+        "Gluteus Maximus"
+      ],
+      "synergistMuscles": [
+        "Hamstrings",
+        "Adductor Magnus",
+        "Gastrocnemius",
+        "Soleus"
+      ],
+      "types": [
+        "legs",
+        "lower"
+      ]
+    },
+    {
       "id": "pwohekrq",
       "name": "Incline Walking",
       "targetMuscles": [],

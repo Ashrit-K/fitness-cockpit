@@ -33,6 +33,7 @@
     --ramp-3:   #86b6ef;
     --ramp-4:   #cde2fb;
     --good:     #17a76b;
+    --good-2:   #0c7d4e;
     --warn:     #c98500;
     --bad:      #e0574f;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -62,6 +63,7 @@
     --ramp-3:   #1c5cab;
     --ramp-4:   #0d366b;
     --good:     #0f8f5b;
+    --good-2:   #0a6640;
     --warn:     #a86f00;
     --bad:      #c53030;
   }
@@ -472,11 +474,13 @@
   }
   function bandState(v) {
     return v === 0 ? "not trained" : v < BAND_LOW ? "under the band"
-      : v <= BAND_HIGH ? "in the band" : "over the band";
+      : v <= BAND_HIGH ? "in the band" : "over the band, by design";
   }
+  /* Over the band is deliberate on some groups, so it reads as a deeper green,
+     never as an alarm. Only "under the band" is flagged. */
   function bandColor(v) {
     return v === 0 ? "var(--muted)" : v < BAND_LOW ? "var(--warn)"
-      : v <= BAND_HIGH ? "var(--good)" : "var(--bad)";
+      : v <= BAND_HIGH ? "var(--good)" : "var(--good-2)";
   }
   function niceAxis(max, n) {
     n = n || 5;
@@ -1019,7 +1023,7 @@
     legend("legend-targets", [
       { l: "under 10 — below the band", c: "var(--warn)" },
       { l: "10–20 — in the band", c: "var(--good)" },
-      { l: "over 20 — past the band", c: "var(--bad)" },
+      { l: "over 20 — above the band", c: "var(--good-2)" },
       { l: "not trained", c: "var(--grid)" }
     ]);
     var LABEL = 92, HEAD = 26, CH = 30;
@@ -1435,9 +1439,10 @@
     draw("gauge", function () { gauge(D.goal); });
 
     /* volume tiles */
-    var inBand = GROUPS.filter(function (g) {
+    var atTarget = GROUPS.filter(function (g) { return w.sets[g][last] >= BAND_LOW; });
+    var under = GROUPS.filter(function (g) {
       var v = w.sets[g][last];
-      return v >= BAND_LOW && v <= BAND_HIGH;
+      return v > 0 && v < BAND_LOW;
     });
     var short = D.vtaper.filter(function (g) { return w.sets[g][last] < BAND_LOW; });
     var spy = D.recent.length
@@ -1447,9 +1452,9 @@
       n: delta(setsNow - setsPrev) + " on last week · " + fmt1(spy) + " per session" });
     kpi("kpi-sessions", { k: "Sessions this week", v: w.sessions[last],
       n: "week of " + shortDate(w.weeks[last]) });
-    kpi("kpi-band", { k: "Groups in 10–20", v: inBand.length, u: "/ " + GROUPS.length,
-      c: inBand.length >= 6 ? "good" : inBand.length >= 3 ? "warn" : "bad",
-      n: inBand.length ? inBand.join(", ") : "no group inside the band" });
+    kpi("kpi-band", { k: "Groups at 10+", v: atTarget.length, u: "/ " + GROUPS.length,
+      c: atTarget.length >= 6 ? "good" : atTarget.length >= 3 ? "warn" : null,
+      n: atTarget.length ? atTarget.join(", ") : "no group at 10 sets yet" });
     kpi("kpi-short", { k: "V-taper short", v: short.length ? short.join(", ") : "none",
       c: short.length ? "bad" : "good",
       n: short.length ? "under 10 sets this week" : "back, shoulders and chest all at 10+" });
