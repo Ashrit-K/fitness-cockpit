@@ -9,7 +9,8 @@ import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
-from groups import CATEGORIES, GROUP_TO_CATEGORY, groups_for
+from groups import (BROAD_GROUPS, CATEGORIES, GROUP_TO_CATEGORY, VTAPER,
+                    groups_for)
 from lifto_parse import parse_record, ParseError
 
 # Liftosaur strips the local offset and stores every timestamp as +00:00.
@@ -32,6 +33,15 @@ MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 MIN_E1RM_DAYS = 12      # a strength panel needs this many training days
 MIN_LIFESPAN_SETS = 10  # rotation bars ignore anything rarer than this
 BW_SET_SHARE = 0.8      # a movement is bodyweight at this share of 0 kg sets
+
+# The current objective: cut to this band, hold strength, add muscle where possible.
+GOAL_LOW_KG = 64.0
+GOAL_HIGH_KG = 65.0
+
+# Strength retention compares a recent window against the year before it.
+WATCH_DAYS = 56
+BASELINE_DAYS = 365
+MIN_WATCH_DAYS = 3      # training days needed in each window to compare a lift
 
 
 # --------------------------------------------------------------- ingest
@@ -253,9 +263,9 @@ def is_free_weight(name):
     return True
 
 
-def e1rm_panels(sessions, limit=6, window=5):
-    """Best estimated 1RM per training day, for the most-logged free-weight lifts."""
-    days = defaultdict(dict)  # name -> date -> best e1rm
+def best_e1rm_by_day(sessions):
+    """name -> {date: best estimated 1RM that day}, free weights only."""
+    days = defaultdict(dict)
     for ses in sessions:
         for name, s in all_sets(ses):
             if not is_free_weight(name) or s["weight_kg"] <= 0 or s["reps"] > 15:
@@ -264,7 +274,39 @@ def e1rm_panels(sessions, limit=6, window=5):
             cur = days[name].get(ses["date"])
             if cur is None or v > cur:
                 days[name][ses["date"]] = v
+    return days
 
+
+def strength_watch(sessions, now, limit=8):
+    """Recent best estimated 1RM against the year before, per free-weight lift.
+
+    This is the retention check for a cut: the recent window should hold its
+    ground against the baseline, not fall away with the body weight.
+    """
+    days = best_e1rm_by_day(sessions)
+    recent_from = now - timedelta(days=WATCH_DAYS)
+    base_from = recent_from - timedelta(days=BASELINE_DAYS)
+    out = []
+    for name, by_day in days.items():
+        recent = [v for d, v in by_day.items() if d > recent_from]
+        base = [v for d, v in by_day.items() if base_from < d <= recent_from]
+        if len(recent) < MIN_WATCH_DAYS or len(base) < MIN_WATCH_DAYS:
+            continue
+        now_kg, base_kg = max(recent), max(base)
+        out.append({
+            "name": name,
+            "now": round(now_kg, 1),
+            "base": round(base_kg, 1),
+            "delta_pct": round(100 * (now_kg / base_kg - 1), 1),
+            "days": len(recent),
+        })
+    out.sort(key=lambda r: -r["delta_pct"])
+    return out[:limit]
+
+
+def e1rm_panels(sessions, limit=6, window=5):
+    """Best estimated 1RM per training day, for the most-logged free-weight lifts."""
+    days = best_e1rm_by_day(sessions)
     ranked = sorted(days.items(), key=lambda kv: -len(kv[1]))
     out = []
     for name, by_day in ranked:
@@ -339,6 +381,85 @@ def dow_matrix(sessions):
         local = ses["local"]
         m[local.weekday()][local.hour] += 1
     return m
+
+
+def monday(d):
+    return d - timedelta(days=d.weekday())
+
+
+def weekly_volume(sessions, customs, builtins, weeks=26, now=None):
+    """Sets and tonnage per broad group per week, most recent `weeks` weeks.
+
+    A set counts once per group the exercise trains, never twice for two heads
+    of the same group.
+    """
+    if now is None:
+        now = sessions[-1]["date"]
+    this_monday = monday(now)
+    starts = [this_monday - timedelta(weeks=weeks - 1 - i) for i in range(weeks)]
+    idx = {w: i for i, w in enumerate(starts)}
+
+    sets = {g: [0] * weeks for g in BROAD_GROUPS}
+    tons = {g: [0.0] * weeks for g in BROAD_GROUPS}
+    days = [set() for _ in range(weeks)]
+    for ses in sessions:
+        i = idx.get(monday(ses["date"]))
+        if i is None:
+            continue
+        days[i].add(ses["date"])
+        for name, s in all_sets(ses):
+            for g in groups_for(name, customs, builtins):
+                sets[g][i] += 1
+                tons[g][i] += s["reps"] * s["weight_kg"]
+    return {
+        "weeks": [w.isoformat() for w in starts],
+        "sets": sets,
+        "tonnage": {g: [round(v) for v in tons[g]] for g in BROAD_GROUPS},
+        "sessions": [len(d) for d in days],
+    }
+
+
+def recent_sessions(sessions, customs, builtins, n=24):
+    """The last n sessions: total sets, tonnage, and sets per group."""
+    out = []
+    for ses in sessions[-n:]:
+        per = {g: 0 for g in BROAD_GROUPS}
+        for name, s in all_sets(ses):
+            for g in groups_for(name, customs, builtins):
+                per[g] += 1
+        out.append({
+            "d": ses["date"].isoformat(),
+            "sets": n_sets(ses),
+            "tonnage": round(tonnage(ses)),
+            "minutes": round((ses["duration_s"] or 0) / 60),
+            "groups": {g: v for g, v in per.items() if v},
+        })
+    return out
+
+
+def goal_block(series):
+    """Where the body weight sits against the target band, and how far it has come."""
+    goal = {"low": GOAL_LOW_KG, "high": GOAL_HIGH_KG}
+    if not series:
+        return goal
+    latest = series[-1]
+    goal["latest_kg"] = latest["kg"]
+    goal["latest_date"] = latest["d"]
+    goal["to_goal_kg"] = round(latest["kg"] - GOAL_HIGH_KG, 1)
+    goal["in_band"] = GOAL_LOW_KG <= latest["kg"] <= GOAL_HIGH_KG
+
+    # The start of the cut is the highest reading in the year before the latest one.
+    year_ago = (datetime.fromisoformat(latest["d"]).date()
+                - timedelta(days=365)).isoformat()
+    window = [p for p in series if p["d"] >= year_ago] or series
+    peak = max(window, key=lambda p: p["kg"])
+    goal["peak_kg"] = peak["kg"]
+    goal["peak_date"] = peak["d"]
+    goal["lost_kg"] = round(peak["kg"] - latest["kg"], 1)
+    total = peak["kg"] - GOAL_HIGH_KG
+    goal["progress_pct"] = round(100 * min(1.0, max(0.0, (peak["kg"] - latest["kg"]) / total)), 1) \
+        if total > 0 else 100.0
+    return goal
 
 
 def bodyweight_series(weights):
@@ -480,6 +601,56 @@ def build_facts(sessions, m, cal, lay, mon, yrs, cats, reps, e1rm, bw, life, dow
     return f
 
 
+def goal_facts(goal):
+    f = {}
+    f["goal_band"] = "%.0f–%.0f kg" % (goal["low"], goal["high"])
+    if "latest_kg" not in goal:
+        return f
+    f["weight_now"] = "%.1f kg" % goal["latest_kg"]
+    f["weight_date"] = goal["latest_date"]
+    f["to_goal"] = ("in band" if goal["in_band"]
+                    else "%.1f kg" % abs(goal["to_goal_kg"]))
+    f["lost_so_far"] = "%.1f kg" % goal["lost_kg"]
+    f["peak_kg"] = "%.1f kg" % goal["peak_kg"]
+    f["peak_date"] = goal["peak_date"]
+    f["progress_pct"] = "%.0f%%" % goal["progress_pct"]
+    return f
+
+
+def volume_facts(vol, recent, watch):
+    f = {}
+    last = len(vol["weeks"]) - 1
+    prev = last - 1
+    total_now = sum(vol["sets"][g][last] for g in BROAD_GROUPS)
+    total_prev = sum(vol["sets"][g][prev] for g in BROAD_GROUPS) if prev >= 0 else 0
+    f["sets_this_week"] = str(total_now)
+    f["sets_last_week"] = str(total_prev)
+    f["sets_wow"] = ("%+d" % (total_now - total_prev)) if prev >= 0 else "—"
+    f["sessions_this_week"] = str(vol["sessions"][last])
+    f["tonnage_this_week"] = "{:,} kg".format(
+        sum(vol["tonnage"][g][last] for g in BROAD_GROUPS))
+
+    in_band = sum(1 for g in BROAD_GROUPS if 10 <= vol["sets"][g][last] <= 20)
+    f["groups_in_band"] = "%d of %d" % (in_band, len(BROAD_GROUPS))
+    for g in VTAPER:
+        f["v_" + g.lower()] = str(vol["sets"][g][last])
+        f["v_" + g.lower() + "_wow"] = ("%+d" % (vol["sets"][g][last] - vol["sets"][g][prev])) \
+            if prev >= 0 else "—"
+
+    if recent:
+        f["last_session"] = recent[-1]["d"]
+        f["last_session_sets"] = str(recent[-1]["sets"])
+        span = [s["sets"] for s in recent]
+        f["sets_per_session_recent"] = "%.1f" % (sum(span) / len(span))
+    if watch:
+        held = sum(1 for w in watch if w["delta_pct"] >= 0)
+        f["lifts_watched"] = str(len(watch))
+        f["lifts_holding"] = str(held)
+        f["watch_worst"] = "%s %+.1f%%" % (watch[-1]["name"], watch[-1]["delta_pct"])
+        f["watch_best"] = "%s %+.1f%%" % (watch[0]["name"], watch[0]["delta_pct"])
+    return f
+
+
 def notes(m, cats, sessions):
     zero = sum(1 for ses in sessions for _n, s in all_sets(ses) if s["weight_kg"] == 0)
     out = [
@@ -533,12 +704,27 @@ def build(records, weights, customs, builtins, now=None):
     bw = bodyweight_moves(sessions)
     life = lifespans(sessions, customs, builtins)
     dow = dow_matrix(sessions)
+    series = bodyweight_series(weights)
+    goal = goal_block(series)
+    vol = weekly_volume(sessions, customs, builtins, now=now)
+    recent = recent_sessions(sessions, customs, builtins)
+    watch = strength_watch(sessions, now)
+
+    facts = build_facts(sessions, m, cal, lay, mon, yrs, cats, reps,
+                        e1rm, bw, life, dow)
+    facts.update(goal_facts(goal))
+    facts.update(volume_facts(vol, recent, watch))
 
     return {
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "meta": m,
-        "facts": build_facts(sessions, m, cal, lay, mon, yrs, cats, reps,
-                             e1rm, bw, life, dow),
+        "goal": goal,
+        "weekly": vol,
+        "recent": recent,
+        "watch": watch,
+        "vtaper": VTAPER,
+        "groups": BROAD_GROUPS,
+        "facts": facts,
         "calendar": cal,
         "layoffs": lay,
         "months": mon,
@@ -549,7 +735,7 @@ def build(records, weights, customs, builtins, now=None):
         "bodyweightMoves": bw,
         "lifespans": life,
         "dow": dow,
-        "weight": bodyweight_series(weights),
+        "weight": series,
         "notes": notes(m, cats, sessions),
     }
 

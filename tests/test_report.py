@@ -236,6 +236,108 @@ def test_unmapped_names_are_reported():
     assert report.category_shares(s, {}, MAP)["unmapped"] == ["Mystery Lift"]
 
 
+# --------------------------------------------------------------- goal
+
+def test_goal_block_measures_the_gap_to_the_band():
+    series = [{"d": "2026-01-01", "kg": 72.0}, {"d": "2026-03-01", "kg": 69.5}]
+    g = report.goal_block(series)
+    assert g["low"] == 64.0 and g["high"] == 65.0
+    assert g["to_goal_kg"] == 4.5
+    assert g["in_band"] is False
+    assert g["peak_kg"] == 72.0
+    assert g["lost_kg"] == 2.5
+    assert g["progress_pct"] == pytest.approx(35.7, abs=0.1)   # 2.5 of 7.0
+
+
+def test_goal_block_reports_being_inside_the_band():
+    g = report.goal_block([{"d": "2026-01-01", "kg": 70.0},
+                           {"d": "2026-03-01", "kg": 64.5}])
+    assert g["in_band"] is True
+    assert g["progress_pct"] == 100.0
+
+
+def test_goal_block_survives_an_empty_series():
+    assert report.goal_block([]) == {"low": 64.0, "high": 65.0}
+
+
+# --------------------------------------------------------------- weekly volume
+
+def test_weekly_volume_counts_a_set_once_per_group():
+    # Bench Press maps to Chest and Arms-side Triceps; each gets one count per set.
+    s = sessions(rec("2026-01-05 09:00:00", "  Bench Press / 2x8 60kg"))
+    w = report.weekly_volume(s, {}, MAP, weeks=2,
+                             now=report.datetime(2026, 1, 7).date())
+    assert w["weeks"] == ["2025-12-29", "2026-01-05"]
+    assert w["sets"]["Chest"] == [0, 2]
+    assert w["sets"]["Triceps"] == [0, 2]
+    assert w["tonnage"]["Chest"] == [0, 2 * 8 * 60]
+    assert w["sessions"] == [0, 1]
+
+
+def test_weekly_volume_does_not_double_count_two_heads_of_one_group():
+    both_heads = {"Incline Press": ["Pectoralis Major Clavicular Head",
+                                    "Pectoralis Major Sternal Head"]}
+    s = sessions(rec("2026-01-05 09:00:00", "  Incline Press / 3x8 40kg"))
+    w = report.weekly_volume(s, {}, both_heads, weeks=1,
+                             now=report.datetime(2026, 1, 7).date())
+    assert w["sets"]["Chest"] == [3]
+
+
+def test_weekly_volume_window_ends_on_the_current_week():
+    s = sessions(rec("2026-01-05 09:00:00", "  Bench Press / 1x8 60kg"),
+                 rec("2025-11-03 09:00:00", "  Bench Press / 1x8 60kg"))
+    w = report.weekly_volume(s, {}, MAP, weeks=4,
+                             now=report.datetime(2026, 1, 8).date())
+    assert w["weeks"][-1] == "2026-01-05"
+    assert len(w["weeks"]) == 4
+    assert sum(w["sets"]["Chest"]) == 1          # the November session falls outside
+
+
+# --------------------------------------------------------------- sessions
+
+def test_recent_sessions_keeps_the_tail_in_order():
+    records = _many("Bench Press", 30)
+    out = report.recent_sessions(sessions(*records), {}, MAP, n=5)
+    assert len(out) == 5
+    assert [o["d"] for o in out] == ["2026-01-%02d" % d for d in range(26, 31)]
+    assert out[0]["sets"] == 1
+    assert out[0]["groups"] == {"Chest": 1, "Triceps": 1}
+    assert out[0]["minutes"] == 60
+
+
+# --------------------------------------------------------------- strength watch
+
+def _on(date, name, reps, weight):
+    return rec(date + " 09:00:00", "  %s / 1x%d %skg" % (name, reps, weight))
+
+
+def test_strength_watch_compares_recent_against_the_year_before():
+    base = [_on("2026-01-%02d" % (i + 1), "Bench Press", 10, 60) for i in range(4)]
+    recent = [_on("2026-06-%02d" % (i + 1), "Bench Press", 10, 66) for i in range(4)]
+    out = report.strength_watch(sessions(*(base + recent)),
+                                report.datetime(2026, 6, 20).date())
+    assert len(out) == 1
+    assert out[0]["name"] == "Bench Press"
+    assert out[0]["base"] == pytest.approx(80.0)
+    assert out[0]["now"] == pytest.approx(88.0)
+    assert out[0]["delta_pct"] == pytest.approx(10.0)
+    assert out[0]["days"] == 4
+
+
+def test_strength_watch_needs_both_windows():
+    only_recent = [_on("2026-06-%02d" % (i + 1), "Bench Press", 10, 60) for i in range(4)]
+    assert report.strength_watch(sessions(*only_recent),
+                                 report.datetime(2026, 6, 20).date()) == []
+
+
+def test_strength_watch_skips_machines():
+    name = "Seated Row, Leverage Machine"
+    base = [_on("2026-01-%02d" % (i + 1), name, 10, 60) for i in range(4)]
+    recent = [_on("2026-06-%02d" % (i + 1), name, 10, 70) for i in range(4)]
+    assert report.strength_watch(sessions(*(base + recent)),
+                                 report.datetime(2026, 6, 20).date()) == []
+
+
 # --------------------------------------------------------------- assembly
 
 def test_build_produces_every_section():
@@ -243,10 +345,12 @@ def test_build_produces_every_section():
         rec("2026-02-01 09:00:00", "  Pull Up / 3x10 0kg")]
     out = report.build(records, {"values": []}, {}, MAP,
                        now=report.datetime(2026, 2, 2).date())
-    for key in ("meta", "facts", "calendar", "layoffs", "months", "years",
-                "categories", "reps", "e1rm", "bodyweightMoves", "lifespans",
-                "dow", "weight", "notes"):
+    for key in ("meta", "goal", "weekly", "recent", "watch", "vtaper", "groups",
+                "facts", "calendar", "layoffs", "months", "years", "categories",
+                "reps", "e1rm", "bodyweightMoves", "lifespans", "dow", "weight",
+                "notes"):
         assert key in out
+    assert out["vtaper"] == ["Back", "Shoulders", "Chest"]
     assert out["meta"]["sessions"] == 21
     assert out["meta"]["active_now"] == 2
 

@@ -61,6 +61,13 @@ GROUP_TO_CATEGORY = {
 
 CATEGORIES = ["Back", "Shoulders", "Chest", "Arms", "Legs", "Core"]
 
+# The groups that build the V taper. These lead the volume view.
+VTAPER = ["Back", "Shoulders", "Chest"]
+
+# The weekly effective-sets band each group is aimed at.
+TARGET_LOW = 10
+TARGET_HIGH = 20
+
 
 # Equipment suffixes Liftosaur appends to a base exercise name.
 EQUIPMENT_SUFFIXES = (", Leverage Machine", ", Smith Machine", ", Cable",
