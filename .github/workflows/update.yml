@@ -21,19 +21,27 @@ jobs:
       - name: Install dependencies
         run: pip install matplotlib numpy
 
-      - name: Fetch weights
+      - name: Fetch data
         env:
           LIFTOSAUR_TOKEN: ${{ secrets.LIFTOSAUR_TOKEN }}
-        run: python fetch_weights.py
+        run: python fetch.py
 
-      - name: Generate chart
-        run: python chart.py
+      - name: Build muscle map
+        run: python muscle_map.py
+
+      - name: Generate charts
+        run: |
+          python chart.py
+          python volume.py
+
+      - name: Run tests
+        run: python -m pip install pytest && python -m pytest tests/ -q
 
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add chart.png stats.json weights.json
+          git add chart.png stats.json weights.json volume_stats.json chart_sets.png chart_tonnage.png chart_targets.png history.json custom_exercises.json muscle_map.json
           if git diff --cached --quiet; then
             echo "No changes"
           else
