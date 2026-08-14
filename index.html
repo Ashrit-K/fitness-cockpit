@@ -32,6 +32,8 @@
     --ramp-2:   #3987e5;
     --ramp-3:   #86b6ef;
     --ramp-4:   #cde2fb;
+    --body:     #232b31;
+    --body-line:#3e4850;
     --good:     #17a76b;
     --good-2:   #0c7d4e;
     --warn:     #c98500;
@@ -62,6 +64,8 @@
     --ramp-2:   #3987e5;
     --ramp-3:   #1c5cab;
     --ramp-4:   #0d366b;
+    --body:     #dfe6ec;
+    --body-line:#aab5bf;
     --good:     #0f8f5b;
     --good-2:   #0a6640;
     --warn:     #a86f00;
@@ -696,9 +700,10 @@
       h.appendChild(s);
     });
   }
-  function rampScale(host, lead, tail) {
+  function rampScale(host, lead, tail, floor) {
     document.getElementById(host).innerHTML = lead +
-      '<i style="background:var(--ramp-0)"></i><i style="background:var(--ramp-1)"></i>' +
+      '<i style="background:' + (floor || "var(--ramp-0)") + '"></i>' +
+      '<i style="background:var(--ramp-1)"></i>' +
       '<i style="background:var(--ramp-2)"></i><i style="background:var(--ramp-3)"></i>' +
       '<i style="background:var(--ramp-4)"></i>' + tail;
   }
@@ -1253,12 +1258,25 @@
     var s = svg("body", 72, 93);
     s.setAttribute("aria-label", "Front and back body map, shaded by the week's effective sets");
     s.setAttribute("height", 440);
-    shapes.front.concat(shapes.back).forEach(function (shape) {
+
+    /* Anatomy the log says nothing about — head, hands, feet, joints, and any
+       muscle that got no work — is painted as plain body, so the figure reads
+       as a person and only the worked muscles carry colour. Silhouette first,
+       worked muscles over it. */
+    var all = shapes.front.concat(shapes.back);
+    var lit = [], unlit = [];
+    all.forEach(function (shape) {
+      var rec = byPart[base(shape.id)];
+      (rec && rec.v > 0 ? lit : unlit).push(shape);
+    });
+    unlit.concat(lit).forEach(function (shape) {
       var b = base(shape.id);
       var rec = byPart[b];
+      var on = rec && rec.v > 0;
       var p = el("path", {
-        d: shape.d, fill: rec ? "var(--ramp-" + bin(rec.v) + ")" : "var(--ramp-0)",
-        stroke: "var(--surface)", "stroke-width": 0.18
+        d: shape.d, fill: on ? "var(--ramp-" + bin(rec.v) + ")" : "var(--body)",
+        stroke: "var(--body-line)", "stroke-width": 0.15,
+        "stroke-linejoin": "round"
       });
       if (rec) {
         p.setAttribute("class", "lit");
@@ -1268,14 +1286,16 @@
                    fmtSet(x.v) + "</b> · " + x.d + "d + " + x.i + "i</span></div>";
           }).join("");
         tipOn(p, tk(shape.name.replace(/^(Left|Right) /, "")) +
-          tv("<b>" + fmtSet(rec.v) + " effective sets</b> this week · " +
-             delta(Math.round((rec.v - rec.prev) * 10) / 10) + " on last week") + rows);
+          tv(rec.v > 0
+            ? "<b>" + fmtSet(rec.v) + " effective sets</b> this week · " +
+              delta(Math.round((rec.v - rec.prev) * 10) / 10) + " on last week"
+            : "<b>not trained</b> this week") + rows);
       }
       s.appendChild(p);
     });
 
     rampScale("scale-body", "Effective sets, week of " + shortDate(bm.weeks[w]) +
-      " &nbsp;none", "&nbsp;" + fmtSet(max));
+      " &nbsp;none", "&nbsp;" + fmtSet(max), "var(--body)");
     var top = Object.keys(byPart).sort(function (a, b2) {
       return byPart[b2].v - byPart[a].v;
     })[0];
