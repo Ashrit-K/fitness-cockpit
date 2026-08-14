@@ -44,12 +44,36 @@ def get_all_weights():
     return values
 
 
+def get_all_history():
+    records = []
+    cursor = None
+    while True:
+        args = {"limit": "200"}
+        if cursor:
+            args["cursor"] = cursor
+        res = call("tools/call", {"name": "get_history", "arguments": args})
+        content = json.loads(res["result"]["content"][0]["text"])
+        records.extend(content["records"])
+        if content.get("hasMore") and content.get("nextCursor"):
+            cursor = content["nextCursor"]
+        else:
+            break
+    return records
+
+
+def get_custom_exercises():
+    res = call("tools/call", {"name": "list_custom_exercises", "arguments": {}})
+    return json.loads(res["result"]["content"][0]["text"])
+
+
 def main():
-    values = get_all_weights()
-    out = {"updated_at": None, "values": values}
     with open("weights.json", "w") as f:
-        json.dump(out, f, indent=2)
-    print(f"saved {len(values)} weight records")
+        json.dump({"updated_at": None, "values": get_all_weights()}, f, indent=2)
+    with open("history.json", "w") as f:
+        json.dump({"records": get_all_history()}, f, indent=2)
+    with open("custom_exercises.json", "w") as f:
+        json.dump(get_custom_exercises(), f, indent=2)
+    print("fetched weights + history + custom exercises")
 
 
 if __name__ == "__main__":

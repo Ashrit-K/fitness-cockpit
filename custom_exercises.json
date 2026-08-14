@@ -1,0 +1,174 @@
+{
+  "exercises": [
+    {
+      "id": "ofkzmvpx",
+      "name": "Bird Dog",
+      "targetMuscles": [
+        "Erector Spinae",
+        "Gluteus Maximus",
+        "Rectus Abdominis"
+      ],
+      "synergistMuscles": [
+        "Obliques",
+        "Gluteus Medius",
+        "Hamstrings",
+        "Deltoid Posterior",
+        "Trapezius Lower Fibers",
+        "Trapezius Middle Fibers"
+      ],
+      "types": [
+        "core",
+        "lower"
+      ]
+    },
+    {
+      "id": "xfwmirqd",
+      "name": "Dead Bug",
+      "targetMuscles": [
+        "Rectus Abdominis"
+      ],
+      "synergistMuscles": [
+        "Obliques",
+        "Erector Spinae",
+        "Iliopsoas"
+      ],
+      "types": [
+        "core"
+      ]
+    },
+    {
+      "id": "pwohekrq",
+      "name": "Incline Walking",
+      "targetMuscles": [],
+      "synergistMuscles": [],
+      "types": []
+    },
+    {
+      "id": "ztlnwuex",
+      "name": "Lat Pulldown Neutral",
+      "targetMuscles": [
+        "Latissimus Dorsi"
+      ],
+      "synergistMuscles": [
+        "Biceps Brachii",
+        "Brachialis",
+        "Brachioradialis",
+        "Deltoid Posterior",
+        "Infraspinatus",
+        "Levator Scapulae",
+        "Teres Major",
+        "Teres Minor",
+        "Trapezius Lower Fibers",
+        "Trapezius Middle Fibers"
+      ],
+      "types": [
+        "upper",
+        "pull"
+      ]
+    },
+    {
+      "id": "cmxeybhk",
+      "name": "Lat Pulldown Pronated Medium",
+      "targetMuscles": [
+        "Latissimus Dorsi"
+      ],
+      "synergistMuscles": [
+        "Biceps Brachii",
+        "Brachialis",
+        "Brachioradialis",
+        "Deltoid Posterior",
+        "Infraspinatus",
+        "Levator Scapulae",
+        "Teres Major",
+        "Teres Minor",
+        "Trapezius Lower Fibers",
+        "Trapezius Middle Fibers"
+      ],
+      "types": [
+        "upper",
+        "pull"
+      ]
+    },
+    {
+      "id": "hpujqapz",
+      "name": "Lat Pulldown Pronated Wide",
+      "targetMuscles": [
+        "Latissimus Dorsi"
+      ],
+      "synergistMuscles": [
+        "Biceps Brachii",
+        "Brachialis",
+        "Brachioradialis",
+        "Deltoid Posterior",
+        "Infraspinatus",
+        "Levator Scapulae",
+        "Teres Major",
+        "Teres Minor",
+        "Trapezius Lower Fibers",
+        "Trapezius Middle Fibers"
+      ],
+      "types": [
+        "upper",
+        "pull"
+      ]
+    },
+    {
+      "id": "sqgcpxtu",
+      "name": "Lat Pulldown Supinated",
+      "targetMuscles": [
+        "Latissimus Dorsi"
+      ],
+      "synergistMuscles": [
+        "Biceps Brachii",
+        "Brachialis",
+        "Brachioradialis",
+        "Deltoid Posterior",
+        "Infraspinatus",
+        "Levator Scapulae",
+        "Teres Major",
+        "Teres Minor",
+        "Trapezius Lower Fibers",
+        "Trapezius Middle Fibers"
+      ],
+      "types": [
+        "upper",
+        "pull"
+      ]
+    },
+    {
+      "id": "vshksbmz",
+      "name": "Neck Curl",
+      "targetMuscles": [
+        "Sternocleidomastoid"
+      ],
+      "synergistMuscles": [],
+      "types": [
+        "upper"
+      ]
+    },
+    {
+      "id": "wuimrjfo",
+      "name": "Neutral Grip Pull Up",
+      "targetMuscles": [
+        "Latissimus Dorsi"
+      ],
+      "synergistMuscles": [
+        "Biceps Brachii",
+        "Brachialis",
+        "Brachioradialis",
+        "Deltoid Posterior",
+        "Infraspinatus",
+        "Levator Scapulae",
+        "Teres Major",
+        "Teres Minor",
+        "Trapezius Lower Fibers",
+        "Trapezius Middle Fibers"
+      ],
+      "types": [
+        "upper",
+        "pull"
+      ]
+    }
+  ],
+  "hasMore": false
+}
