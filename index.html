@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weight Tracker</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #fff; color: #222; margin: 0; padding: 24px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .meta { color: #666; font-size: 0.9rem; margin-bottom: 16px; }
+  img { max-width: 100%; height: auto; border: 1px solid #eee; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Weight Tracker</h1>
+  <div class="meta">Last updated: <span id="updated">—</span> · Latest: <span id="latest">—</span> kg · Trend: <span id="trend">—</span> kg/week · Target: −0.45 kg/week</div>
+  <img id="chart" src="chart.png" alt="Weight trend chart">
+</div>
+<script>
+fetch("stats.json")
+  .then(r => r.json())
+  .then(s => {
+    document.getElementById("updated").textContent = s.updated_at.replace("T", " ");
+    document.getElementById("latest").textContent = s.latest_kg;
+    document.getElementById("trend").textContent = (s.trend_kg_per_week ?? 0).toFixed(2);
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>
