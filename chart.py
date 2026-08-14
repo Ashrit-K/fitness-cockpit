@@ -65,7 +65,7 @@ def main():
 
     history_start = dates[0] if dates else datetime(2025, 1, 1)
     ax1.plot(dates, weights, "o-", color="#2b6cb0", lw=1.5, ms=4)
-    ax1.set_title("Body weight — history")
+    ax1.set_title("Body weight — full history")
     ax1.set_ylabel("kg")
     ax1.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
     for label in ax1.get_xticklabels():
@@ -87,7 +87,7 @@ def main():
                  color="#2f855a",
                  label=f"target from {dense_dates[0]:%b %d}: 1 lb/week")
         ax2.set_title(
-            f"Dense reporting window ({dense_dates[0]:%b %d} → {dense_dates[-1]:%b %d})"
+            f"Current cut window ({dense_dates[0]:%b %d} → now)"
         )
         ax2.legend()
 
@@ -97,6 +97,8 @@ def main():
         label.set_rotation(30)
 
     for ax in (ax1, ax2):
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
         ax.set_facecolor("white")
         ax.set_axisbelow(True)
         ax.minorticks_on()
@@ -115,6 +117,7 @@ def main():
     with open("stats.json", "w") as f:
         json.dump({
             "updated_at": now.isoformat(),
+            "history_start": str(dates[0]) if dates else None,
             "latest_kg": round(weights[-1], 2) if weights else None,
             "latest_date": str(dates[-1]) if dates else None,
             "dense_start": str(dense_dates[0]) if dense_dates else None,

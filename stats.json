@@ -1,8 +1,9 @@
 {
-  "updated_at": "2026-08-14T04:11:10.404774+00:00",
+  "updated_at": "2026-08-14T10:10:54.615264+00:00",
+  "history_start": "2016-11-12 00:00:00",
   "latest_kg": 69.5,
   "latest_date": "2026-08-14 00:00:00",
   "dense_start": "2026-08-08 00:00:00",
-  "trend_kg_per_week": -1.538,
+  "trend_kg_per_week": -1.537,
   "target_kg_per_week": -0.4536
 }
