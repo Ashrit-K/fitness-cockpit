@@ -9,8 +9,8 @@ import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
-from groups import (BROAD_GROUPS, CATEGORIES, GROUP_TO_CATEGORY, VTAPER,
-                    groups_for)
+from groups import (BROAD_GROUPS, CATEGORIES, GROUP_TO_CATEGORY, SYNERGIST_CREDIT,
+                    VTAPER, groups_for, weighted_groups)
 from patterns import DELT_HEADS, PATTERNS
 from lifto_parse import parse_record, ParseError
 
@@ -494,22 +494,33 @@ def weekly_volume(sessions, customs, builtins, weeks=26, now=None):
     starts = [this_monday - timedelta(weeks=weeks - 1 - i) for i in range(weeks)]
     idx = {w: i for i, w in enumerate(starts)}
 
-    sets = {g: [0] * weeks for g in BROAD_GROUPS}
+    sets = {g: [0.0] * weeks for g in BROAD_GROUPS}
+    direct = {g: [0] * weeks for g in BROAD_GROUPS}
+    indirect = {g: [0] * weeks for g in BROAD_GROUPS}
     tons = {g: [0.0] * weeks for g in BROAD_GROUPS}
     days = [set() for _ in range(weeks)]
+    performed = [0] * weeks          # sets actually done, before any group credit
     for ses in sessions:
         i = idx.get(monday(ses["date"]))
         if i is None:
             continue
         days[i].add(ses["date"])
+        performed[i] += n_sets(ses)
         for name, s in all_sets(ses):
-            for g in groups_for(name, customs, builtins):
-                sets[g][i] += 1
-                tons[g][i] += s["reps"] * s["weight_kg"]
+            for g, credit in weighted_groups(name, customs, builtins).items():
+                sets[g][i] += credit
+                tons[g][i] += credit * s["reps"] * s["weight_kg"]
+                if credit == 1.0:
+                    direct[g][i] += 1
+                else:
+                    indirect[g][i] += 1
     return {
         "weeks": [w.isoformat() for w in starts],
-        "sets": sets,
+        "sets": {g: [round(v, 1) for v in sets[g]] for g in BROAD_GROUPS},
+        "direct": direct,
+        "indirect": indirect,
         "tonnage": {g: [round(v) for v in tons[g]] for g in BROAD_GROUPS},
+        "performed": performed,
         "sessions": [len(d) for d in days],
     }
 
@@ -518,16 +529,20 @@ def recent_sessions(sessions, customs, builtins, n=24):
     """The last n sessions: total sets, tonnage, and sets per group."""
     out = []
     for ses in sessions[-n:]:
-        per = {g: 0 for g in BROAD_GROUPS}
+        per = {g: 0.0 for g in BROAD_GROUPS}
+        direct = {g: 0 for g in BROAD_GROUPS}
         for name, s in all_sets(ses):
-            for g in groups_for(name, customs, builtins):
-                per[g] += 1
+            for g, credit in weighted_groups(name, customs, builtins).items():
+                per[g] += credit
+                if credit == 1.0:
+                    direct[g] += 1
         out.append({
             "d": ses["date"].isoformat(),
             "sets": n_sets(ses),
             "tonnage": round(tonnage(ses)),
             "minutes": round((ses["duration_s"] or 0) / 60),
-            "groups": {g: v for g, v in per.items() if v},
+            "groups": {g: round(v, 1) for g, v in per.items() if v},
+            "direct": {g: v for g, v in direct.items() if v},
         })
     return out
 
@@ -716,20 +731,22 @@ def volume_facts(vol, recent, watch):
     f = {}
     last = len(vol["weeks"]) - 1
     prev = last - 1
-    total_now = sum(vol["sets"][g][last] for g in BROAD_GROUPS)
-    total_prev = sum(vol["sets"][g][prev] for g in BROAD_GROUPS) if prev >= 0 else 0
-    f["sets_this_week"] = str(total_now)
-    f["sets_last_week"] = str(total_prev)
-    f["sets_wow"] = ("%+d" % (total_now - total_prev)) if prev >= 0 else "—"
+    total_now = vol["performed"][last]
+    total_prev = vol["performed"][prev] if prev >= 0 else 0
+    f["sets_this_week"] = "%g" % round(total_now, 1)
+    f["sets_last_week"] = "%g" % round(total_prev, 1)
+    f["sets_wow"] = ("%+g" % round(total_now - total_prev, 1)) if prev >= 0 else "—"
     f["sessions_this_week"] = str(vol["sessions"][last])
     f["tonnage_this_week"] = "{:,} kg".format(
         sum(vol["tonnage"][g][last] for g in BROAD_GROUPS))
 
     in_band = sum(1 for g in BROAD_GROUPS if 10 <= vol["sets"][g][last] <= 20)
+    f["synergist_credit"] = str(SYNERGIST_CREDIT)
     f["groups_in_band"] = "%d of %d" % (in_band, len(BROAD_GROUPS))
     for g in VTAPER:
-        f["v_" + g.lower()] = str(vol["sets"][g][last])
-        f["v_" + g.lower() + "_wow"] = ("%+d" % (vol["sets"][g][last] - vol["sets"][g][prev])) \
+        f["v_" + g.lower()] = ("%g" % vol["sets"][g][last])
+        f["v_" + g.lower() + "_wow"] = \
+            ("%+g" % round(vol["sets"][g][last] - vol["sets"][g][prev], 1)) \
             if prev >= 0 else "—"
 
     if recent:
@@ -751,6 +768,14 @@ def notes(m, cats, sessions):
     out = [
         {"k": "Warmups", "v": "Excluded everywhere. Only work sets count toward "
                               "sets, reps, tonnage and volume."},
+        {"k": "Effective sets", "v": "A set counts 1.0 for every muscle group it "
+                                     "targets and %g for every group it only assists, "
+                                     "so a pull up credits back in full and biceps in "
+                                     "part. The 10-20 weekly band is written on that "
+                                     "basis. Weekly totals are therefore fractional, "
+                                     "and every tooltip shows the direct and indirect "
+                                     "split behind the number."
+                                     % SYNERGIST_CREDIT},
         {"k": "Cardio", "v": "Incline Walking and Elliptical Machine record minutes, "
                              "not repetitions. Both are dropped from every set and "
                              "rep statistic."},

@@ -1,7 +1,7 @@
 import pytest
 
 import report
-from groups import muscles_for
+from groups import muscles_for, synergists_for, weighted_groups
 
 
 def rec(date, body, duration=3600):
@@ -234,6 +234,81 @@ def test_equipment_suffix_falls_back_to_base_name():
 def test_unmapped_names_are_reported():
     s = sessions(rec("2026-01-05 09:00:00", "  Mystery Lift / 1x8 60kg"))
     assert report.category_shares(s, {}, MAP)["unmapped"] == ["Mystery Lift"]
+
+
+# --------------------------------------------------------------- set credit
+
+# the shape muscle_map.py writes now: target and synergist muscles per exercise
+MAP2 = {
+    "Pull Up": {"target": ["Latissimus Dorsi"],
+                "synergist": ["Biceps Brachii", "Brachialis", "Teres Major"]},
+    "Incline Bench Press": {"target": ["Pectoralis Major Clavicular Head"],
+                            "synergist": ["Pectoralis Major Sternal Head",
+                                          "Triceps Brachii", "Deltoid Anterior"]},
+}
+
+
+def test_a_targeted_group_scores_one_and_an_assisted_group_a_half():
+    w = weighted_groups("Pull Up", {}, MAP2)
+    assert w == {"Back": 1.0, "Biceps": 0.5}
+
+
+def test_a_group_that_is_both_target_and_synergist_scores_one():
+    # both pec heads map to Chest — one is the target, so Chest is not halved
+    w = weighted_groups("Incline Bench Press", {}, MAP2)
+    assert w["Chest"] == 1.0
+    assert w["Triceps"] == 0.5
+    assert w["Shoulders"] == 0.5
+
+
+def test_flat_legacy_map_still_reads_as_targets_only():
+    assert weighted_groups("Bench Press", {}, MAP) == {"Chest": 1.0, "Triceps": 1.0}
+    assert synergists_for("Bench Press", {}, MAP) == []
+
+
+def test_custom_exercise_synergists_score_a_half():
+    customs = {"Bird Dog": {"name": "Bird Dog",
+                            "targetMuscles": ["Erector Spinae"],
+                            "synergistMuscles": ["Obliques"]}}
+    assert weighted_groups("Bird Dog", customs, {}) == {"Back": 1.0, "Core": 0.5}
+
+
+def test_equipment_suffix_falls_back_for_the_weighted_lookup():
+    assert weighted_groups("Pull Up, Band", {}, MAP2) == {"Back": 1.0, "Biceps": 0.5}
+
+
+def test_weekly_volume_credits_targets_fully_and_assists_by_half():
+    s = sessions(rec("2026-01-05 09:00:00", "  Pull Up / 4x8 0kg"))
+    w = report.weekly_volume(s, {}, MAP2, weeks=1,
+                             now=report.datetime(2026, 1, 7).date())
+    assert w["sets"]["Back"] == [4.0]
+    assert w["sets"]["Biceps"] == [2.0]
+    assert w["direct"]["Back"] == [4] and w["indirect"]["Back"] == [0]
+    assert w["direct"]["Biceps"] == [0] and w["indirect"]["Biceps"] == [4]
+
+
+def test_weekly_volume_reports_sets_performed_separately_from_credit():
+    s = sessions(rec("2026-01-05 09:00:00", "  Pull Up / 4x8 0kg"))
+    w = report.weekly_volume(s, {}, MAP2, weeks=1,
+                             now=report.datetime(2026, 1, 7).date())
+    credited = sum(w["sets"][g][0] for g in w["sets"])
+    assert w["performed"] == [4]          # four sets were done
+    assert credited == 6.0                # they credit six group-sets
+
+
+def test_weekly_tonnage_is_credited_the_same_way():
+    s = sessions(rec("2026-01-05 09:00:00", "  Incline Bench Press / 2x10 50kg"))
+    w = report.weekly_volume(s, {}, MAP2, weeks=1,
+                             now=report.datetime(2026, 1, 7).date())
+    assert w["tonnage"]["Chest"] == [2 * 10 * 50]
+    assert w["tonnage"]["Triceps"] == [2 * 10 * 50 * 0.5]
+
+
+def test_recent_sessions_carry_the_direct_count_for_the_tooltip():
+    s = sessions(rec("2026-01-05 09:00:00", "  Pull Up / 3x8 0kg"))
+    out = report.recent_sessions(s, {}, MAP2, n=1)
+    assert out[0]["groups"] == {"Back": 3.0, "Biceps": 1.5}
+    assert out[0]["direct"] == {"Back": 3}
 
 
 # --------------------------------------------------------------- goal

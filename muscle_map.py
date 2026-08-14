@@ -50,7 +50,12 @@ def load_exercises_ts(path="data/exercises.ts"):
         target = re.findall(r"\"([^\"]+)\"", tm.group(1))
         if not target:
             continue
-        muscles_by_id[ident] = target
+        sm = re.search(r"synergistMuscles:\s*\[(.*?)\]", body, re.S)
+        synergist = re.findall(r"\"([^\"]+)\"", sm.group(1)) if sm else []
+        muscles_by_id[ident] = {
+            "target": target,
+            "synergist": [m for m in synergist if m not in target],
+        }
         se = re.search(r"sortedEquipment:\s*\[(.*?)\]", body, re.S)
         equipment_by_id[ident] = re.findall(r"\"([^\"]+)\"", se.group(1)) if se else []
 

@@ -320,13 +320,13 @@
     <div class="card p3"><div class="kpi" id="kpi-short"></div></div>
 
     <div class="card p" >
-      <p class="card-h">Weekly sets per muscle group
-        <span class="r">band 10–20 · 12-week trace · this week vs last</span></p>
+      <p class="card-h">Weekly effective sets per muscle group
+        <span class="r">band 10–20 · target 1.0, assist 0.5 · 12-week trace</span></p>
       <div class="meters" id="meters"></div>
     </div>
 
     <div class="card p7 flush">
-      <p class="card-h">Weekly sets by area <span class="r" id="vol-r">—</span></p>
+      <p class="card-h">Weekly effective sets by area <span class="r" id="vol-r">—</span></p>
       <div class="legend" id="legend-cat"></div>
       <div id="fig-sets"></div>
     </div>
@@ -336,7 +336,7 @@
     </div>
 
     <div class="card p8 flush">
-      <p class="card-h">Sets per session <span class="r" id="sess-r">—</span></p>
+      <p class="card-h">Effective sets per session <span class="r" id="sess-r">—</span></p>
       <div class="legend" id="legend-session"></div>
       <div id="sessions"></div>
     </div>
@@ -346,7 +346,7 @@
     </div>
 
     <div class="card p fixed scroll">
-      <p class="card-h">Every group against the band <span class="r">last 8 weeks · ▲▼ is the move on the week before</span></p>
+      <p class="card-h">Every group against the band <span class="r">effective sets · last 8 weeks · ▲▼ is the move on the week before</span></p>
       <div class="legend" id="legend-targets"></div>
       <div id="fig-targets"></div>
     </div>
@@ -486,7 +486,17 @@
   function tipOn(node, html) { node.setAttribute("data-tip", html); return node; }
   function tk(s) { return '<span class="tk">' + s + "</span>"; }
   function tv(s) { return "<span>" + s + "</span>"; }
-  function delta(n) { return (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n); }
+  function delta(n) {
+    var v = Math.round(Math.abs(n) * 10) / 10;
+    return (n > 0 ? "+" : n < 0 ? "−" : "±") + v;
+  }
+  /* credited sets are fractional: a set counts 1.0 where it targets a group
+     and 0.5 where it only assists */
+  function fmtSet(v) { return (Math.round(v * 10) / 10).toString(); }
+  function splitTip(direct, indirect) {
+    if (!direct && !indirect) return "";
+    return "<br>" + direct + " direct + " + indirect + " indirect";
+  }
   function dnum(iso) { return new Date(iso.slice(0, 10) + "T00:00:00Z").getTime(); }
   function longDate(iso) {
     var d = new Date(dnum(iso));
@@ -822,7 +832,7 @@
 
   /* One instrument per muscle group: the week's sets, the move on last week,
      a 12-week trace, and the 10–20 band drawn as a track. */
-  function meterCard(g, weeks, values, key) {
+  function meterCard(g, weeks, values, key, direct, indirect) {
     var box = document.createElement("div");
     box.className = "meter" + (key ? " key" : "");
     var W = 240, H = 98;
@@ -834,7 +844,7 @@
     var col = bandColor(now);
     s.appendChild(el("text", { x: 2, y: 11, class: "axlab" }, g));
     s.appendChild(el("text", { x: W - 2, y: 15, class: "big", "text-anchor": "end",
-                               fill: col }, now));
+                               fill: col }, fmtSet(now)));
     s.appendChild(el("text", { x: W - 2, y: 29, class: "tick", "text-anchor": "end" },
       delta(now - was) + " on last week"));
 
@@ -853,7 +863,8 @@
         fill: v === 0 ? "var(--grid)" : last ? col : "var(--series-1)",
         "fill-opacity": v === 0 ? 1 : last ? 1 : 0.42
       }), tk(g + " · week of " + shortDate(weeks[i])) +
-         tv("<b>" + v + " sets</b> · " + bandState(v))));
+         tv("<b>" + fmtSet(v) + " sets</b> · " + bandState(v) +
+            splitTip(direct[i], indirect[i]))));
     });
     s.appendChild(el("line", { x1: 2, x2: W - 2, y1: sTop + sH, y2: sTop + sH,
                                class: "baseline" }));
@@ -888,7 +899,8 @@
     var weeks = w.weeks.slice(-nWeeks);
     var order = vt.concat(GROUPS.filter(function (g) { return vt.indexOf(g) < 0; }));
     order.forEach(function (g) {
-      host.appendChild(meterCard(g, weeks, w.sets[g].slice(-nWeeks), vt.indexOf(g) >= 0));
+      host.appendChild(meterCard(g, weeks, w.sets[g].slice(-nWeeks), vt.indexOf(g) >= 0,
+                                 w.direct[g].slice(-nWeeks), w.indirect[g].slice(-nWeeks)));
     });
   }
 
@@ -930,13 +942,13 @@
         AREAS.forEach(function (a) {
           if (hidden[a] || data[a][i] <= 0) return;
           html += '<div class="row"><span><i style="background:' + AREA_COLOR[a] + '"></i>' +
-                  a + "</span><span><b>" + data[a][i] + "</b></span></div>";
+                  a + "</span><span><b>" + fmtSet(data[a][i]) + "</b></span></div>";
         });
-        html += '<div class="row total"><span>Total</span><span><b>' + totals[i] +
-                "</b> sets</span></div>";
+        html += '<div class="row total"><span>Total</span><span><b>' +
+                fmtSet(totals[i]) + "</b> effective sets</span></div>";
         if (i > 0) {
           html += '<div class="row"><span>On last week</span><span>' +
-                  delta(totals[i] - totals[i - 1]) + "</span></div>";
+                  delta(Math.round((totals[i] - totals[i - 1]) * 10) / 10) + "</span></div>";
         }
         s.appendChild(tipOn(el("rect", { x: L + slot * i, y: T, width: slot, height: ph,
                                          class: "hit" }), html));
@@ -949,7 +961,8 @@
     var last = weeks.length - 1;
     var tot = AREAS.reduce(function (a, k) { return a + data[k][last]; }, 0);
     var prev = AREAS.reduce(function (a, k) { return a + data[k][last - 1]; }, 0);
-    txt("vol-r", tot + " sets this week · " + delta(tot - prev));
+    txt("vol-r", fmtSet(tot) + " effective sets this week · " +
+        delta(Math.round((tot - prev) * 10) / 10));
   }
 
   /* Weekly tonnage is one measure, so it gets its own single-series chart. */
@@ -1022,7 +1035,7 @@
       AREAS.forEach(function (a) {
         if (per[i][a] <= 0) return;
         html += '<div class="row"><span><i style="background:' + AREA_COLOR[a] + '"></i>' +
-                a + "</span><span><b>" + per[i][a] + "</b></span></div>";
+                a + "</span><span><b>" + fmtSet(per[i][a]) + "</b></span></div>";
       });
       s.appendChild(tipOn(el("rect", { x: L + slot * i, y: T, width: slot, height: ph,
                                        class: "hit" }), html));
@@ -1075,6 +1088,7 @@
     });
     GROUPS.forEach(function (g, r) {
       var series = w.sets[g].slice(-nWeeks);
+      var dir = w.direct[g].slice(-nWeeks), ind = w.indirect[g].slice(-nWeeks);
       s.appendChild(el("text", { x: LABEL - 10, y: HEAD + CH * r + CH / 2 + 4,
                                  class: "axlab", "text-anchor": "end" }, g));
       series.forEach(function (v, c) {
@@ -1088,7 +1102,7 @@
         s.appendChild(el("text", {
           x: x + CW / 2 - (c > 0 ? 6 : 0), y: y + CH / 2 + 4, class: "dlab",
           "text-anchor": "middle", fill: none ? "var(--muted)" : "#fff"
-        }, v));
+        }, fmtSet(v)));
         if (c > 0 && move !== 0) {
           s.appendChild(el("text", {
             x: x + CW - 7, y: y + CH / 2 + 3.5, class: "tick", "text-anchor": "end",
@@ -1097,7 +1111,8 @@
         }
         s.appendChild(tipOn(el("rect", { x: x, y: y, width: CW, height: CH, class: "hit" }),
           tk(g + " · week of " + shortDate(weeks[c])) +
-          tv("<b>" + v + " sets</b> · " + bandState(v) +
+          tv("<b>" + fmtSet(v) + " effective sets</b> · " + bandState(v) +
+             splitTip(dir[c], ind[c]) +
              (c > 0 ? "<br>" + delta(move) + " on last week" : ""))));
       });
     });
@@ -1565,10 +1580,7 @@
 
   loadJSON("report.json").then(function (D) {
     var w = D.weekly, last = w.weeks.length - 1;
-    function weekTotal(src, i) {
-      return GROUPS.reduce(function (a, g) { return a + src[g][i]; }, 0);
-    }
-    var setsNow = weekTotal(w.sets, last), setsPrev = weekTotal(w.sets, last - 1);
+    var setsNow = w.performed[last], setsPrev = w.performed[last - 1];
 
     txt("rail-wt", D.goal.latest_kg ? fmt1(D.goal.latest_kg) + " kg" : "—");
     txt("rail-goal", fmt1(D.goal.low) + "–" + fmt1(D.goal.high) + " kg");
@@ -1587,12 +1599,12 @@
     var short = D.vtaper.filter(function (g) { return w.sets[g][last] < BAND_LOW; });
     var spy = D.recent.length
       ? D.recent.reduce(function (a, s) { return a + s.sets; }, 0) / D.recent.length : 0;
-    kpi("kpi-sets", { k: "Sets this week", v: setsNow,
+    kpi("kpi-sets", { k: "Sets performed", v: setsNow,
       c: setsNow >= setsPrev ? "good" : null,
       n: delta(setsNow - setsPrev) + " on last week · " + fmt1(spy) + " per session" });
     kpi("kpi-sessions", { k: "Sessions this week", v: w.sessions[last],
       n: "week of " + shortDate(w.weeks[last]) });
-    kpi("kpi-band", { k: "Groups at 10+", v: atTarget.length, u: "/ " + GROUPS.length,
+    kpi("kpi-band", { k: "Groups at 10+ eff.", v: atTarget.length, u: "/ " + GROUPS.length,
       c: atTarget.length >= 6 ? "good" : atTarget.length >= 3 ? "warn" : null,
       n: atTarget.length ? atTarget.join(", ") : "no group at 10 sets yet" });
     kpi("kpi-short", { k: "V-taper short", v: short.length ? short.join(", ") : "none",
