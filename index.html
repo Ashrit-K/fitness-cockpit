@@ -340,14 +340,19 @@
 
   <p class="band">Volume <em>hypertrophy</em></p>
   <div class="grid">
+    <div class="card p">
+      <p class="card-h">Block <span class="r" id="block-r">—</span></p>
+      <div class="readout" id="ro-block"></div>
+      <div id="block"></div>
+    </div>
     <div class="card p3"><div class="kpi" id="kpi-sets"></div></div>
     <div class="card p3"><div class="kpi" id="kpi-sessions"></div></div>
     <div class="card p3"><div class="kpi" id="kpi-band"></div></div>
     <div class="card p3"><div class="kpi" id="kpi-short"></div></div>
 
     <div class="card p" >
-      <p class="card-h">Weekly effective sets per muscle group
-        <span class="r">band 10–20 · target 1.0, assist 0.5 · 12-week trace</span></p>
+      <p class="card-h">Weekly direct sets per muscle group
+        <span class="r">against each group's own MEV · MAV · MRV · 12-week trace</span></p>
       <div class="meters" id="meters"></div>
     </div>
 
@@ -378,7 +383,7 @@
       <div id="body"></div>
     </div>
     <div class="card p7 fixed scroll">
-      <p class="card-h">Every group against the band <span class="r">effective sets · last 6 weeks · ▲▼ is the move on the week before</span></p>
+      <p class="card-h">Every group against its landmarks <span class="r">direct sets · last 6 weeks · ▲▼ is the move on the week before</span></p>
       <div class="legend" id="legend-targets"></div>
       <div id="fig-targets"></div>
     </div>
@@ -492,7 +497,7 @@
   };
   var AREA_COLOR = {};
   AREAS.forEach(function (a, i) { AREA_COLOR[a] = "var(--series-" + (i + 1) + ")"; });
-  var BAND_LOW = 10, BAND_HIGH = 20;
+  var LM = {};        // per-group volume landmarks, filled from report.json
   /* A rate measured over less than this many days of dense weigh-ins is water and
      glycogen as much as fat. The page reports it; it does not judge it. */
   var TREND_MIN_DAYS = 14;
@@ -541,15 +546,26 @@
   function signed(v) {
     return (v < 0 ? "−" : "+") + (Math.round(Math.abs(v) * 100) / 100).toFixed(2);
   }
-  function bandState(v) {
-    return v === 0 ? "not trained" : v < BAND_LOW ? "under the band"
-      : v <= BAND_HIGH ? "in the band" : "over the band, by design";
+  /* Volume reads against that group's own landmarks — MEV, MAV, MRV — not one
+     band for every muscle. Under MEV is the only shortfall worth flagging;
+     everything above it deepens in green rather than turning into an alarm. */
+  function bandState(v, g) {
+    var lm = LM[g];
+    if (v <= 0) return "not trained";
+    if (!lm) return "logged";
+    if (v < lm.mev) return "under MEV";
+    if (v < lm.mav_low) return "at MEV";
+    if (v <= lm.mav_high) return "in MAV";
+    if (v <= lm.mrv) return "near MRV";
+    return "over MRV";
   }
-  /* Over the band is deliberate on some groups, so it reads as a deeper green,
-     never as an alarm. Only "under the band" is flagged. */
-  function bandColor(v) {
-    return v === 0 ? "var(--muted)" : v < BAND_LOW ? "var(--warn)"
-      : v <= BAND_HIGH ? "var(--good)" : "var(--good-2)";
+  function bandColor(v, g) {
+    var st = bandState(v, g);
+    return st === "not trained" ? "var(--muted)"
+      : st === "under MEV" ? "var(--warn)"
+      : st === "near MRV" ? "var(--good-2)"
+      : st === "over MRV" ? "var(--good-3)"
+      : "var(--good)";
   }
   function niceAxis(max, n) {
     n = n || 5;
@@ -969,28 +985,30 @@
 
   /* One instrument per muscle group: the week's sets, the move on last week,
      a 12-week trace, and the 10–20 band drawn as a track. */
-  function meterCard(g, weeks, values, key, direct, indirect) {
+  function meterCard(g, weeks, values, key, effective, indirect) {
     var box = document.createElement("div");
     box.className = "meter" + (key ? " key" : "");
     var W = 240, H = 98;
     var s = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img" });
     s.setAttribute("aria-label", g + " weekly sets against the 10 to 20 band");
 
+    var lm = LM[g] || { mev: 10, mav_low: 12, mav_high: 20, mrv: 22 };
     var now = values[values.length - 1];
     var was = values.length > 1 ? values[values.length - 2] : 0;
-    var col = bandColor(now);
+    var col = bandColor(now, g);
     s.appendChild(el("text", { x: 2, y: 11, class: "axlab" }, g));
     s.appendChild(el("text", { x: W - 2, y: 15, class: "big", "text-anchor": "end",
-                               fill: col }, fmtSet(now)));
+                               fill: col }, now));
     s.appendChild(el("text", { x: W - 2, y: 29, class: "tick", "text-anchor": "end" },
-      delta(now - was) + " on last week"));
+      delta(now - was) + " · " + bandState(now, g)));
 
     /* 12-week trace */
     var sTop = 36, sH = 30;
-    var top = Math.max(BAND_HIGH + 2, Math.max.apply(null, values));
+    var top = Math.max(lm.mrv + 2, Math.max.apply(null, values));
     var slot = (W - 4) / values.length, bw = Math.max(slot - 2.5, 2);
-    s.appendChild(el("rect", { x: 2, y: sTop + sH - (BAND_HIGH / top * sH), width: W - 4,
-      height: (BAND_HIGH - BAND_LOW) / top * sH, fill: "var(--good)", "fill-opacity": 0.14 }));
+    s.appendChild(el("rect", { x: 2, y: sTop + sH - (lm.mav_high / top * sH), width: W - 4,
+      height: (lm.mav_high - lm.mav_low) / top * sH,
+      fill: "var(--good)", "fill-opacity": 0.14 }));
     values.forEach(function (v, i) {
       var h = v / top * sH;
       var last = i === values.length - 1;
@@ -1000,32 +1018,34 @@
         fill: v === 0 ? "var(--grid)" : last ? col : "var(--series-1)",
         "fill-opacity": v === 0 ? 1 : last ? 1 : 0.42
       }), tk(g + " · week of " + shortDate(weeks[i])) +
-         tv("<b>" + fmtSet(v) + " sets</b> · " + bandState(v) +
-            splitTip(direct[i], indirect[i]))));
+         tv("<b>" + v + " direct sets</b> · " + bandState(v, g) +
+            "<br>" + fmtSet(effective[i]) + " effective, with " + indirect[i] +
+            " assisting sets at half credit")));
     });
     s.appendChild(el("line", { x1: 2, x2: W - 2, y1: sTop + sH, y2: sTop + sH,
                                class: "baseline" }));
 
     /* band track */
     var tY = 76, tH = 9, tX0 = 2, tW = W - 4;
-    var scaleTop = Math.max(30, top);
+    var scaleTop = Math.max(lm.mrv + 4, top);
     function TX(v) { return tX0 + v / scaleTop * tW; }
     s.appendChild(el("rect", { x: tX0, y: tY, width: tW, height: tH, rx: 3,
                                fill: "var(--grid)" }));
-    s.appendChild(el("rect", { x: TX(BAND_LOW), y: tY, width: TX(BAND_HIGH) - TX(BAND_LOW),
+    s.appendChild(el("rect", { x: TX(lm.mav_low), y: tY,
+                               width: TX(lm.mav_high) - TX(lm.mav_low),
                                height: tH, fill: "var(--good)", "fill-opacity": 0.3 }));
     if (now > 0) {
       s.appendChild(el("rect", { x: tX0, y: tY, width: Math.max(TX(now) - tX0, 2),
                                  height: tH, rx: 3, fill: col, "fill-opacity": 0.85 }));
     }
-    [BAND_LOW, BAND_HIGH].forEach(function (v) {
+    [["mev", "MEV"], ["mrv", "MRV"]].forEach(function (mark) {
+      var v = lm[mark[0]];
+      if (!v) return;
       s.appendChild(el("line", { x1: TX(v), x2: TX(v), y1: tY - 2, y2: tY + tH + 2,
                                  stroke: "var(--good)", "stroke-width": 1 }));
+      s.appendChild(el("text", { x: TX(v), y: H - 1, class: "tick",
+                                 "text-anchor": "middle" }, mark[1] + " " + v));
     });
-    s.appendChild(el("text", { x: TX(BAND_LOW), y: H - 1, class: "tick",
-                               "text-anchor": "middle" }, BAND_LOW));
-    s.appendChild(el("text", { x: TX(BAND_HIGH), y: H - 1, class: "tick",
-                               "text-anchor": "middle" }, BAND_HIGH));
     box.appendChild(s);
     return box;
   }
@@ -1036,9 +1056,70 @@
     var weeks = w.weeks.slice(-nWeeks);
     var order = vt.concat(GROUPS.filter(function (g) { return vt.indexOf(g) < 0; }));
     order.forEach(function (g) {
-      host.appendChild(meterCard(g, weeks, w.sets[g].slice(-nWeeks), vt.indexOf(g) >= 0,
-                                 w.direct[g].slice(-nWeeks), w.indirect[g].slice(-nWeeks)));
+      host.appendChild(meterCard(g, weeks, w.direct[g].slice(-nWeeks), vt.indexOf(g) >= 0,
+                                 w.sets[g].slice(-nWeeks), w.indirect[g].slice(-nWeeks)));
     });
+  }
+
+  /* The block, counted by programme week rather than calendar week — this
+     block's week 1 ran Wed to Mon, and the volume ramp is defined on the
+     programme's own weeks. Each group is a column, each week a bar. */
+  function blockChart(b) {
+    var weeks = b.weeks;
+    var W = 1180, H = 190, L = 34, R = 8, T = 26, B = 34;
+    var pw = W - L - R, ph = H - T - B;
+    var s = svg("block", W, H);
+    s.setAttribute("aria-label", "Effective sets per muscle group, by programme week");
+    var top = 0;
+    GROUPS.forEach(function (g) {
+      weeks.forEach(function (wk) { if (wk.direct[g] > top) top = wk.direct[g]; });
+      var lm = LM[g];
+      if (lm && lm.mrv > top) top = lm.mrv;
+    });
+    var ax = niceAxis(top, 4);
+    yAxis(s, L, R, W, T, ph, ax.ticks, ax.top);
+
+    var slot = pw / GROUPS.length;
+    var bw = Math.min((slot - 10) / weeks.length, 22);
+    GROUPS.forEach(function (g, gi) {
+      var x0 = L + slot * gi;
+      var lm = LM[g];
+      if (lm) {
+        /* the group's own working range, drawn behind its bars */
+        s.appendChild(el("rect", {
+          x: x0 + 3, y: T + ph - lm.mav_high / ax.top * ph, width: slot - 6,
+          height: Math.max((lm.mav_high - lm.mav_low) / ax.top * ph, 1),
+          fill: "var(--good)", "fill-opacity": 0.13
+        }));
+        s.appendChild(el("line", {
+          x1: x0 + 3, x2: x0 + slot - 3,
+          y1: T + ph - lm.mrv / ax.top * ph, y2: T + ph - lm.mrv / ax.top * ph,
+          stroke: "var(--good-2)", "stroke-width": 1, "stroke-dasharray": "2 2"
+        }));
+      }
+      weeks.forEach(function (wk, wi) {
+        var v = wk.direct[g], h = v / ax.top * ph;
+        var partial = wk.week === b.current_week && b.current_day < b.days_per_week;
+        var x = x0 + (slot - bw * weeks.length) / 2 + bw * wi;
+        s.appendChild(tipOn(el("rect", {
+          x: x + 1, y: T + ph - h, width: bw - 2, height: Math.max(h, 1), rx: 1.5,
+          fill: bandColor(v, g), "fill-opacity": partial ? 0.55 : 1
+        }), tk(g + " · week " + wk.week) +
+           tv("<b>" + v + " direct sets</b> · " + bandState(v, g) +
+              "<br>" + fmtSet(wk.sets[g]) + " effective" +
+              (partial ? "<br>week in progress · day " + b.current_day + " of " +
+                         b.days_per_week : "") +
+              (lm ? "<br>MEV " + lm.mev + " · MAV " + lm.mav_low + "–" + lm.mav_high +
+                    " · MRV " + lm.mrv : ""))));
+      });
+      s.appendChild(el("text", { x: x0 + slot / 2, y: H - 20, class: "tick",
+        "text-anchor": "middle" }, g));
+    });
+    s.appendChild(el("line", { x1: L, x2: W - R, y1: T + ph, y2: T + ph, class: "baseline" }));
+    s.appendChild(el("text", { x: L, y: 10, class: "axlab" },
+      "Direct sets · one bar per programme week · shaded band is MAV, dashed is MRV"));
+    s.appendChild(el("text", { x: L, y: H - 6, class: "tick" },
+      "week " + weeks[0].week + " → week " + weeks[weeks.length - 1].week));
   }
 
   /* Stacked weekly sets by area — six validated hues, 2px gap between segments. */
@@ -1209,9 +1290,10 @@
   function targetHeat(w, nWeeks) {
     var weeks = w.weeks.slice(-nWeeks);
     legend("legend-targets", [
-      { l: "under 10 — below the band", c: "var(--warn)" },
-      { l: "10–20 — in the band", c: "var(--good)" },
-      { l: "over 20 — above the band", c: "var(--good-2)" },
+      { l: "under MEV", c: "var(--warn)" },
+      { l: "MEV to MAV", c: "var(--good)" },
+      { l: "near MRV", c: "var(--good-2)" },
+      { l: "over MRV", c: "var(--good-3)" },
       { l: "not trained", c: "var(--grid)" }
     ]);
     var LABEL = 92, HEAD = 26, CH = 30;
@@ -1224,8 +1306,8 @@
                                  "text-anchor": "middle" }, shortDate(wk)));
     });
     GROUPS.forEach(function (g, r) {
-      var series = w.sets[g].slice(-nWeeks);
-      var dir = w.direct[g].slice(-nWeeks), ind = w.indirect[g].slice(-nWeeks);
+      var series = w.direct[g].slice(-nWeeks);
+      var eff = w.sets[g].slice(-nWeeks), ind = w.indirect[g].slice(-nWeeks);
       s.appendChild(el("text", { x: LABEL - 10, y: HEAD + CH * r + CH / 2 + 4,
                                  class: "axlab", "text-anchor": "end" }, g));
       series.forEach(function (v, c) {
@@ -1234,12 +1316,12 @@
         var move = c > 0 ? v - series[c - 1] : 0;
         s.appendChild(el("rect", {
           x: x + 1, y: y + 1, width: CW - 2, height: CH - 2, rx: 3,
-          fill: none ? "var(--grid)" : bandColor(v), "fill-opacity": none ? 1 : 0.9
+          fill: none ? "var(--grid)" : bandColor(v, g), "fill-opacity": none ? 1 : 0.9
         }));
         s.appendChild(el("text", {
           x: x + CW / 2 - (c > 0 ? 6 : 0), y: y + CH / 2 + 4, class: "dlab",
           "text-anchor": "middle", fill: none ? "var(--muted)" : "#fff"
-        }, fmtSet(v)));
+        }, v));
         if (c > 0 && move !== 0) {
           s.appendChild(el("text", {
             x: x + CW - 7, y: y + CH / 2 + 3.5, class: "tick", "text-anchor": "end",
@@ -1248,8 +1330,8 @@
         }
         s.appendChild(tipOn(el("rect", { x: x, y: y, width: CW, height: CH, class: "hit" }),
           tk(g + " · week of " + shortDate(weeks[c])) +
-          tv("<b>" + fmtSet(v) + " effective sets</b> · " + bandState(v) +
-             splitTip(dir[c], ind[c]) +
+          tv("<b>" + v + " direct sets</b> · " + bandState(v, g) +
+             "<br>" + fmtSet(eff[c]) + " effective, with " + ind[c] + " assisting" +
              (c > 0 ? "<br>" + delta(move) + " on last week" : ""))));
       });
     });
@@ -1795,6 +1877,7 @@
   }
 
   loadJSON("report.json").then(function (D) {
+    LM = D.landmarks || {};
     var w = D.weekly, last = w.weeks.length - 1;
     var setsNow = w.performed[last], setsPrev = w.performed[last - 1];
 
@@ -1810,12 +1893,14 @@
     });
 
     /* volume tiles */
-    var atTarget = GROUPS.filter(function (g) { return w.sets[g][last] >= BAND_LOW; });
-    var under = GROUPS.filter(function (g) {
-      var v = w.sets[g][last];
-      return v > 0 && v < BAND_LOW;
+    var atTarget = GROUPS.filter(function (g) {
+      var st = bandState(w.sets[g][last], g);
+      return st === "in MAV" || st === "near MRV";
     });
-    var short = D.vtaper.filter(function (g) { return w.sets[g][last] < BAND_LOW; });
+    var short = D.vtaper.filter(function (g) {
+      var st = bandState(w.sets[g][last], g);
+      return st === "under MEV" || st === "not trained";
+    });
     var spy = D.recent.length
       ? D.recent.reduce(function (a, s) { return a + s.sets; }, 0) / D.recent.length : 0;
     kpi("kpi-sets", { k: "Sets performed", v: setsNow,
@@ -1823,13 +1908,37 @@
       n: delta(setsNow - setsPrev) + " on last week · " + fmt1(spy) + " per session" });
     kpi("kpi-sessions", { k: "Sessions this week", v: w.sessions[last],
       n: "week of " + shortDate(w.weeks[last]) });
-    kpi("kpi-band", { k: "Groups at 10+ eff.", v: atTarget.length, u: "/ " + GROUPS.length,
+    kpi("kpi-band", { k: "Groups in MAV", v: atTarget.length, u: "/ " + GROUPS.length,
       c: atTarget.length >= 6 ? "good" : atTarget.length >= 3 ? "warn" : null,
-      n: atTarget.length ? atTarget.join(", ") : "no group at 10 sets yet" });
+      n: atTarget.length ? atTarget.join(", ") : "no group inside its MAV yet" });
     kpi("kpi-short", { k: "V-taper short", v: short.length ? short.join(", ") : "none",
       c: short.length ? "bad" : "good",
-      n: short.length ? "under 10 sets this week" : "back, shoulders and chest all at 10+" });
+      n: short.length ? "under MEV this week"
+         : "back, shoulders and chest all at or over MEV" });
 
+    draw("block", function () {
+      var b = D.block;
+      if (!b) throw new Error("no programme tagged on recent sessions");
+      blockChart(b);
+      var wk = b.weeks[b.weeks.length - 1];
+      var prev = b.weeks.length > 1 ? b.weeks[b.weeks.length - 2] : null;
+      var tot = function (x) {
+        return GROUPS.reduce(function (a, g) { return a + x.direct[g]; }, 0);
+      };
+      txt("block-r", b.program + " · started " + longDate(b.started));
+      readout("ro-block", [
+        { k: "Week", v: b.current_week },
+        { k: "Day", v: b.current_day + " of " + b.days_per_week },
+        { k: "Sets performed", v: wk.performed },
+        { k: "Direct sets", v: fmtSet(tot(wk)) },
+        { k: "Last week", v: prev ? fmtSet(tot(prev)) : "—" },
+        { k: "Ramp", v: prev
+            ? delta(Math.round((tot(wk) - tot(prev)) * 10) / 10) +
+              (b.current_day < b.days_per_week ? " so far" : "")
+            : "first week",
+          c: prev && tot(wk) >= tot(prev) ? "down" : null }
+      ]);
+    });
     draw("meters", function () { meters(w, D.vtaper, 12); });
     draw("fig-sets", function () { areaStack(w, 26); });
     draw("fig-tonnage", function () { tonnageWeeks(w, 26); });
@@ -1999,7 +2108,8 @@
         ". The page renders whatever the exports hold at load time.");
   }).catch(function () {
     ["gauge", "fig-cut", "fig-history", "meters", "fig-sets", "fig-tonnage", "sessions",
-     "session-tonnage", "fig-targets", "body", "patterns", "delts", "cal", "months", "sps",
+     "session-tonnage", "fig-targets", "body", "block", "patterns", "delts", "cal",
+     "months", "sps",
      "bwshare", "cats", "reps", "e1rm", "bwm", "life", "dow", "notes"]
       .forEach(unavailable);
   });

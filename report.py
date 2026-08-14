@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from body_map import MUSCLE_TO_PARTS
 from groups import (BROAD_GROUPS, CATEGORIES, GROUP_TO_CATEGORY, SYNERGIST_CREDIT,
                     VTAPER, groups_for, muscles_for, synergists_for, weighted_groups)
+from landmarks import LANDMARKS, state
 from patterns import DELT_HEADS, PATTERNS
 from lifto_parse import parse_record, ParseError
 
@@ -78,6 +79,10 @@ def load_sessions(records):
             "date": dt.date(),
             "local": dt + IST,
             "duration_s": parsed["duration_s"],
+            "program": parsed["program"],
+            "week": parsed["week"],
+            "day_in_week": parsed["day_in_week"],
+            "day_name": parsed["day_name"],
             "exercises": exercises,
         })
     out.sort(key=lambda s: s["dt"])
@@ -567,6 +572,52 @@ def muscle_week(sessions, customs, builtins, now=None, weeks=2):
     return {"weeks": [w.isoformat() for w in starts], "muscles": out}
 
 
+def mesocycle(sessions, customs, builtins):
+    """The current block, by programme week rather than calendar week.
+
+    A programme week rarely lines up with a calendar week — this block's week 1
+    ran Wed to Mon — and the volume ramp is defined on the programme's weeks,
+    so the block view has to count them its own way.
+    """
+    tagged = [s for s in sessions if s["program"] and s["week"]]
+    if not tagged:
+        return None
+    program = tagged[-1]["program"]
+    block = [s for s in tagged if s["program"] == program]
+    weeks = {}
+    for ses in block:
+        w = weeks.setdefault(ses["week"], {
+            "week": ses["week"], "days": [], "performed": 0,
+            "sets": {g: 0.0 for g in BROAD_GROUPS},
+            "direct": {g: 0 for g in BROAD_GROUPS},
+        })
+        w["days"].append({"d": ses["date"].isoformat(),
+                          "day": ses["day_in_week"],
+                          "name": ses["day_name"]})
+        w["performed"] += n_sets(ses)
+        for name, _s in all_sets(ses):
+            for g, credit in weighted_groups(name, customs, builtins).items():
+                w["sets"][g] += credit
+                if credit == 1.0:
+                    w["direct"][g] += 1
+    out = []
+    for n in sorted(weeks):
+        w = weeks[n]
+        w["sets"] = {g: round(v, 1) for g, v in w["sets"].items()}
+        w["days"].sort(key=lambda d: d["d"])
+        out.append(w)
+    days_per_week = max((len(w["days"]) for w in out), default=0)
+    last = out[-1]
+    return {
+        "program": program,
+        "started": block[0]["date"].isoformat(),
+        "days_per_week": days_per_week,
+        "current_week": last["week"],
+        "current_day": len(last["days"]),
+        "weeks": out,
+    }
+
+
 def recent_sessions(sessions, customs, builtins, n=24):
     """The last n sessions: total sets, tonnage, and sets per group."""
     out = []
@@ -829,8 +880,14 @@ def volume_facts(vol, recent, watch):
     f["tonnage_this_week"] = "{:,} kg".format(
         sum(vol["tonnage"][g][last] for g in BROAD_GROUPS))
 
-    in_band = sum(1 for g in BROAD_GROUPS if 10 <= vol["sets"][g][last] <= 20)
     f["synergist_credit"] = str(SYNERGIST_CREDIT)
+    states = {g: state(g, vol["direct"][g][last]) for g in BROAD_GROUPS}
+    in_band = sum(1 for g in BROAD_GROUPS if states[g] in ("in MAV", "near MRV"))
+    f["groups_in_mav"] = "%d of %d" % (in_band, len(BROAD_GROUPS))
+    under = [g for g in BROAD_GROUPS if states[g] in ("under MEV", "none")]
+    over = [g for g in BROAD_GROUPS if states[g] == "over MRV"]
+    f["groups_under_mev"] = ", ".join(under) if under else "none"
+    f["groups_over_mrv"] = ", ".join(over) if over else "none"
     f["groups_in_band"] = "%d of %d" % (in_band, len(BROAD_GROUPS))
     for g in VTAPER:
         f["v_" + g.lower()] = ("%g" % vol["sets"][g][last])
@@ -919,6 +976,7 @@ def build(records, weights, customs, builtins, now=None):
     vol = weekly_volume(sessions, customs, builtins, now=now)
     recent = recent_sessions(sessions, customs, builtins)
     bodymap = muscle_week(sessions, customs, builtins, now=now)
+    block = mesocycle(sessions, customs, builtins)
     watch = strength_watch(sessions, now)
     pats = pattern_series(sessions, now)
     delts = delt_heads(sessions, now)
@@ -937,6 +995,8 @@ def build(records, weights, customs, builtins, now=None):
         "weekly": vol,
         "recent": recent,
         "bodyMap": bodymap,
+        "block": block,
+        "landmarks": LANDMARKS,
         "watch": watch,
         "patterns": pats,
         "delts": delts,
