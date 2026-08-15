@@ -1,4 +1,6 @@
 import json
+
+from lifto_parse import daily_weights
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -27,17 +29,12 @@ def parse_value(v):
 def load():
     with open("weights.json") as f:
         data = json.load(f)
-    by_day = defaultdict(list)
-    for rec in data["values"]:
-        ts = rec["timestamp"]
-        if isinstance(ts, str):
-            d = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-        else:
-            d = datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
-        by_day[d.date()].append(parse_value(rec["value"]))
+    # one rule for the trend and the page: re-weighs collapse, separate
+    # measurements average
+    by_day = daily_weights(data["values"])
     days = sorted(by_day)
     dates = [datetime(d.year, d.month, d.day) for d in days]
-    weights = [sum(by_day[d]) / len(by_day[d]) for d in days]
+    weights = [by_day[d] for d in days]
     return dates, weights
 
 

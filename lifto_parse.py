@@ -61,3 +61,46 @@ def parse_record(text):
         })
     meta["exercises"] = exercises
     return meta
+
+
+REWEIGH_MINUTES = 15
+
+
+def daily_weights(values, reweigh_minutes=REWEIGH_MINUTES):
+    """Day -> body weight in kg, collapsing re-weighs.
+
+    Two readings minutes apart are one weigh-in done twice — you stepped off
+    and stepped back on because you doubted the first — so the later one wins.
+    Readings hours apart are genuinely separate measurements and are averaged,
+    which is what keeps a morning and an evening reading from fighting.
+
+    `values` are dicts with a `date` (ISO) and a `value` ("69.5kg" / "152lb").
+    """
+    from datetime import datetime
+
+    by_day = {}
+    for v in values:
+        raw = v.get("value")
+        if not raw:
+            continue
+        try:
+            kg = parse_weight(str(raw))
+        except ValueError:
+            continue
+        try:
+            dt = datetime.fromisoformat(str(v["date"]).replace("Z", "+00:00"))
+        except (ValueError, KeyError):
+            continue
+        by_day.setdefault(dt.date(), []).append((dt, kg))
+
+    out = {}
+    for day, readings in by_day.items():
+        readings.sort()
+        kept = []
+        for dt, kg in readings:
+            if kept and (dt - kept[-1][0]).total_seconds() <= reweigh_minutes * 60:
+                kept[-1] = (dt, kg)      # same weigh-in, later reading wins
+            else:
+                kept.append((dt, kg))
+        out[day] = sum(k for _d, k in kept) / len(kept)
+    return out

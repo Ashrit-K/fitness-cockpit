@@ -437,3 +437,30 @@ def test_build_produces_every_section():
 def test_build_rejects_empty_history():
     with pytest.raises(ValueError):
         report.build([], {"values": []}, {}, {})
+
+
+# --------------------------------------------------------------- re-weighs
+
+def test_a_reweigh_minutes_later_replaces_the_reading():
+    series = report.bodyweight_series({"values": [
+        {"date": "2026-08-15T03:14:00.000Z", "value": "69kg"},
+        {"date": "2026-08-15T03:18:00.000Z", "value": "69.5kg"},
+    ]})
+    assert series == [{"d": "2026-08-15", "kg": 69.5}]
+
+
+def test_readings_hours_apart_still_average():
+    series = report.bodyweight_series({"values": [
+        {"date": "2026-08-10T00:40:00.000Z", "value": "70.7kg"},
+        {"date": "2026-08-10T17:00:00.000Z", "value": "70.2kg"},
+    ]})
+    assert series == [{"d": "2026-08-10", "kg": 70.45}]
+
+
+def test_a_run_of_reweighs_keeps_only_the_last():
+    series = report.bodyweight_series({"values": [
+        {"date": "2026-08-15T03:00:00.000Z", "value": "70kg"},
+        {"date": "2026-08-15T03:05:00.000Z", "value": "69.8kg"},
+        {"date": "2026-08-15T03:10:00.000Z", "value": "69.5kg"},
+    ]})
+    assert series == [{"d": "2026-08-15", "kg": 69.5}]

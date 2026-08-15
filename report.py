@@ -14,7 +14,7 @@ from groups import (BROAD_GROUPS, CATEGORIES, GROUP_TO_CATEGORY, SYNERGIST_CREDI
                     VTAPER, groups_for, muscles_for, synergists_for, weighted_groups)
 from landmarks import LANDMARKS, state
 from patterns import DELT_HEADS, PATTERNS
-from lifto_parse import parse_record, ParseError
+from lifto_parse import daily_weights, parse_record, ParseError
 
 # Liftosaur strips the local offset and stores every timestamp as +00:00.
 # The log was recorded in India, so clock-time questions need this back.
@@ -713,19 +713,14 @@ def milestone_facts(ms, series):
 
 
 def bodyweight_series(weights):
-    """Daily-averaged body weight in kg, oldest first."""
-    by_day = defaultdict(list)
-    for v in weights.get("values", []):
-        raw = v.get("value")
-        if not raw:
-            continue
-        m = re.match(r"^([\d.]+)\s*(kg|lb)?$", str(raw).strip())
-        if not m:
-            continue
-        kg = float(m.group(1)) * (0.453592 if m.group(2) == "lb" else 1.0)
-        by_day[v["date"][:10]].append(kg)
-    return [{"d": d, "kg": round(sum(v) / len(v), 2)}
-            for d, v in sorted(by_day.items())]
+    """Body weight per day in kg, oldest first.
+
+    A re-weigh minutes later replaces the reading rather than averaging with
+    it; readings hours apart are separate measurements and do average.
+    """
+    by_day = daily_weights(weights.get("values", []))
+    return [{"d": d.isoformat(), "kg": round(kg, 2)}
+            for d, kg in sorted(by_day.items())]
 
 
 # --------------------------------------------------------------- narrative
