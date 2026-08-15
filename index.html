@@ -36,6 +36,7 @@
     --body-line:#3e4850;
     --good:     #17a76b;
     --good-2:   #0c7d4e;
+    --good-3:   #0a6b45;
     --warn:     #c98500;
     --bad:      #e0574f;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -68,6 +69,7 @@
     --body-line:#aab5bf;
     --good:     #0f8f5b;
     --good-2:   #0a6640;
+    --good-3:   #0a5c3a;
     --warn:     #a86f00;
     --bad:      #c53030;
   }
@@ -351,8 +353,8 @@
     <div class="card p3"><div class="kpi" id="kpi-short"></div></div>
 
     <div class="card p" >
-      <p class="card-h">Weekly direct sets per muscle group
-        <span class="r">against each group's own MEV · MAV · MRV · 12-week trace</span></p>
+      <p class="card-h">Weekly effective sets per muscle group
+        <span class="r">target 1.0, assist 0.5 · against each group's MEV · MAV · MRV</span></p>
       <div class="meters" id="meters"></div>
     </div>
 
@@ -383,7 +385,7 @@
       <div id="body"></div>
     </div>
     <div class="card p7 fixed scroll">
-      <p class="card-h">Every group against its landmarks <span class="r">direct sets · last 6 weeks · ▲▼ is the move on the week before</span></p>
+      <p class="card-h">Every group against its landmarks <span class="r">effective sets · last 6 weeks · ▲▼ is the move on the week before</span></p>
       <div class="legend" id="legend-targets"></div>
       <div id="fig-targets"></div>
     </div>
@@ -985,7 +987,7 @@
 
   /* One instrument per muscle group: the week's sets, the move on last week,
      a 12-week trace, and the 10–20 band drawn as a track. */
-  function meterCard(g, weeks, values, key, effective, indirect) {
+  function meterCard(g, weeks, values, key, direct, indirect) {
     var box = document.createElement("div");
     box.className = "meter" + (key ? " key" : "");
     var W = 240, H = 98;
@@ -998,9 +1000,11 @@
     var col = bandColor(now, g);
     s.appendChild(el("text", { x: 2, y: 11, class: "axlab" }, g));
     s.appendChild(el("text", { x: W - 2, y: 15, class: "big", "text-anchor": "end",
-                               fill: col }, now));
+                               fill: col }, fmtSet(now)));
+    var allIndirect = direct[direct.length - 1] === 0 && now > 0;
     s.appendChild(el("text", { x: W - 2, y: 29, class: "tick", "text-anchor": "end" },
-      delta(now - was) + " · " + bandState(now, g)));
+      delta(now - was) + " · " + bandState(now, g) +
+      (allIndirect ? " · all indirect" : "")));
 
     /* 12-week trace */
     var sTop = 36, sH = 30;
@@ -1018,9 +1022,9 @@
         fill: v === 0 ? "var(--grid)" : last ? col : "var(--series-1)",
         "fill-opacity": v === 0 ? 1 : last ? 1 : 0.42
       }), tk(g + " · week of " + shortDate(weeks[i])) +
-         tv("<b>" + v + " direct sets</b> · " + bandState(v, g) +
-            "<br>" + fmtSet(effective[i]) + " effective, with " + indirect[i] +
-            " assisting sets at half credit")));
+         tv("<b>" + fmtSet(v) + " effective sets</b> · " + bandState(v, g) +
+            "<br>" + direct[i] + " direct + " + indirect[i] +
+            " assisting at half credit")));
     });
     s.appendChild(el("line", { x1: 2, x2: W - 2, y1: sTop + sH, y2: sTop + sH,
                                class: "baseline" }));
@@ -1056,8 +1060,8 @@
     var weeks = w.weeks.slice(-nWeeks);
     var order = vt.concat(GROUPS.filter(function (g) { return vt.indexOf(g) < 0; }));
     order.forEach(function (g) {
-      host.appendChild(meterCard(g, weeks, w.direct[g].slice(-nWeeks), vt.indexOf(g) >= 0,
-                                 w.sets[g].slice(-nWeeks), w.indirect[g].slice(-nWeeks)));
+      host.appendChild(meterCard(g, weeks, w.sets[g].slice(-nWeeks), vt.indexOf(g) >= 0,
+                                 w.direct[g].slice(-nWeeks), w.indirect[g].slice(-nWeeks)));
     });
   }
 
@@ -1072,7 +1076,7 @@
     s.setAttribute("aria-label", "Effective sets per muscle group, by programme week");
     var top = 0;
     GROUPS.forEach(function (g) {
-      weeks.forEach(function (wk) { if (wk.direct[g] > top) top = wk.direct[g]; });
+      weeks.forEach(function (wk) { if (wk.sets[g] > top) top = wk.sets[g]; });
       var lm = LM[g];
       if (lm && lm.mrv > top) top = lm.mrv;
     });
@@ -1098,15 +1102,16 @@
         }));
       }
       weeks.forEach(function (wk, wi) {
-        var v = wk.direct[g], h = v / ax.top * ph;
+        var v = wk.sets[g], h = v / ax.top * ph;
         var partial = wk.week === b.current_week && b.current_day < b.days_per_week;
         var x = x0 + (slot - bw * weeks.length) / 2 + bw * wi;
         s.appendChild(tipOn(el("rect", {
           x: x + 1, y: T + ph - h, width: bw - 2, height: Math.max(h, 1), rx: 1.5,
           fill: bandColor(v, g), "fill-opacity": partial ? 0.55 : 1
         }), tk(g + " · week " + wk.week) +
-           tv("<b>" + v + " direct sets</b> · " + bandState(v, g) +
-              "<br>" + fmtSet(wk.sets[g]) + " effective" +
+           tv("<b>" + fmtSet(v) + " effective sets</b> · " + bandState(v, g) +
+              "<br>" + wk.direct[g] + " direct + " +
+              Math.round((v - wk.direct[g]) * 2) + " assisting" +
               (partial ? "<br>week in progress · day " + b.current_day + " of " +
                          b.days_per_week : "") +
               (lm ? "<br>MEV " + lm.mev + " · MAV " + lm.mav_low + "–" + lm.mav_high +
@@ -1117,7 +1122,7 @@
     });
     s.appendChild(el("line", { x1: L, x2: W - R, y1: T + ph, y2: T + ph, class: "baseline" }));
     s.appendChild(el("text", { x: L, y: 10, class: "axlab" },
-      "Direct sets · one bar per programme week · shaded band is MAV, dashed is MRV"));
+      "Effective sets · one bar per programme week · shaded band is MAV, dashed is MRV"));
     s.appendChild(el("text", { x: L, y: H - 6, class: "tick" },
       "week " + weeks[0].week + " → week " + weeks[weeks.length - 1].week));
   }
@@ -1306,8 +1311,8 @@
                                  "text-anchor": "middle" }, shortDate(wk)));
     });
     GROUPS.forEach(function (g, r) {
-      var series = w.direct[g].slice(-nWeeks);
-      var eff = w.sets[g].slice(-nWeeks), ind = w.indirect[g].slice(-nWeeks);
+      var series = w.sets[g].slice(-nWeeks);
+      var dir = w.direct[g].slice(-nWeeks), ind = w.indirect[g].slice(-nWeeks);
       s.appendChild(el("text", { x: LABEL - 10, y: HEAD + CH * r + CH / 2 + 4,
                                  class: "axlab", "text-anchor": "end" }, g));
       series.forEach(function (v, c) {
@@ -1321,7 +1326,7 @@
         s.appendChild(el("text", {
           x: x + CW / 2 - (c > 0 ? 6 : 0), y: y + CH / 2 + 4, class: "dlab",
           "text-anchor": "middle", fill: none ? "var(--muted)" : "#fff"
-        }, v));
+        }, fmtSet(v)));
         if (c > 0 && move !== 0) {
           s.appendChild(el("text", {
             x: x + CW - 7, y: y + CH / 2 + 3.5, class: "tick", "text-anchor": "end",
@@ -1330,8 +1335,8 @@
         }
         s.appendChild(tipOn(el("rect", { x: x, y: y, width: CW, height: CH, class: "hit" }),
           tk(g + " · week of " + shortDate(weeks[c])) +
-          tv("<b>" + v + " direct sets</b> · " + bandState(v, g) +
-             "<br>" + fmtSet(eff[c]) + " effective, with " + ind[c] + " assisting" +
+          tv("<b>" + fmtSet(v) + " effective sets</b> · " + bandState(v, g) +
+             "<br>" + dir[c] + " direct + " + ind[c] + " assisting" +
              (c > 0 ? "<br>" + delta(move) + " on last week" : ""))));
       });
     });
@@ -1923,14 +1928,14 @@
       var wk = b.weeks[b.weeks.length - 1];
       var prev = b.weeks.length > 1 ? b.weeks[b.weeks.length - 2] : null;
       var tot = function (x) {
-        return GROUPS.reduce(function (a, g) { return a + x.direct[g]; }, 0);
+        return GROUPS.reduce(function (a, g) { return a + x.sets[g]; }, 0);
       };
       txt("block-r", b.program + " · started " + longDate(b.started));
       readout("ro-block", [
         { k: "Week", v: b.current_week },
         { k: "Day", v: b.current_day + " of " + b.days_per_week },
         { k: "Sets performed", v: wk.performed },
-        { k: "Direct sets", v: fmtSet(tot(wk)) },
+        { k: "Effective sets", v: fmtSet(tot(wk)) },
         { k: "Last week", v: prev ? fmtSet(tot(prev)) : "—" },
         { k: "Ramp", v: prev
             ? delta(Math.round((tot(wk) - tot(prev)) * 10) / 10) +

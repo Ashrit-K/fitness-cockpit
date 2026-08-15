@@ -881,7 +881,7 @@ def volume_facts(vol, recent, watch):
         sum(vol["tonnage"][g][last] for g in BROAD_GROUPS))
 
     f["synergist_credit"] = str(SYNERGIST_CREDIT)
-    states = {g: state(g, vol["direct"][g][last]) for g in BROAD_GROUPS}
+    states = {g: state(g, vol["sets"][g][last]) for g in BROAD_GROUPS}
     in_band = sum(1 for g in BROAD_GROUPS if states[g] in ("in MAV", "near MRV"))
     f["groups_in_mav"] = "%d of %d" % (in_band, len(BROAD_GROUPS))
     under = [g for g in BROAD_GROUPS if states[g] in ("under MEV", "none")]

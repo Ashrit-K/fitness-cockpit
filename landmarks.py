@@ -11,15 +11,14 @@ contradicts that — chest and side delts do not share a ceiling.
 These are RP's published figures, rounded, and they are a starting point rather
 than a measurement. Edit them here as the block teaches you your own numbers.
 
-They are compared against *direct* sets — sets whose exercise targets that
-group — because that is what the landmark model counts. Effective sets, which
-add half a set for every group an exercise only assists, run far higher: a
-pull-heavy week can reach 48 effective back sets against an MRV of 25, and
-reading that as "way past recovery" would be an artefact of the metric, not a
-fact about the training.
+They are compared against *effective* sets — a set counts 1.0 for a group it
+targets and 0.5 for one it only assists. That matches how the landmark model
+counts: heavy back work is credited toward biceps rather than ignored, so a
+block with no curls in it does not report zero biceps volume when every pull
+in the week loaded them.
 
-So the page keeps both. Landmarks judge direct sets; effective sets show the
-fuller stimulus on the body map and the volume charts.
+Direct sets stay visible alongside, because "12 effective, all of it indirect"
+is a different training situation from "12 direct".
 """
 
 LANDMARKS = {
