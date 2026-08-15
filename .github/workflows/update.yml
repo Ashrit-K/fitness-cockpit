@@ -2,10 +2,12 @@ name: Update Weight Chart
 
 on:
   schedule:
-    # 15:00 IST and 19:00 IST — after a late-morning or an afternoon session.
+    # Weigh-ins land between 05:00 and 09:00 IST, so the first run of the day
+    # follows them; the other two follow a late-morning or afternoon session.
     # GitHub runs cron in UTC and can start a scheduled job several minutes late.
-    - cron: "30 9 * * *"
-    - cron: "30 13 * * *"
+    - cron: "0 4 * * *"     # 09:30 IST — after the morning weigh-in
+    - cron: "30 9 * * *"    # 15:00 IST
+    - cron: "30 13 * * *"   # 19:00 IST
   workflow_dispatch:
 
 permissions:

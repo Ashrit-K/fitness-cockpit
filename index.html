@@ -1874,8 +1874,12 @@
 
   /* ---------------------------------------------------------- wiring */
 
+  /* Revalidate on every load. Pages serves these with a ten-minute max-age, so
+     a cached copy would keep showing yesterday's weigh-in after the pipeline
+     had already published today's. no-cache still allows a 304, so a file that
+     has not changed costs nothing. */
   function loadJSON(url) {
-    return fetch(url).then(function (r) {
+    return fetch(url, { cache: "no-cache" }).then(function (r) {
       if (!r.ok) throw new Error(url + " " + r.status);
       return r.json();
     });
