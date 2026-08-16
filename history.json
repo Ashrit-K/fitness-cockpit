@@ -1,6 +1,10 @@
 {
   "records": [
     {
+      "id": 1786798424984,
+      "text": "2026-08-15 12:53:44 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 2 - Day 4 \u2014 V Pull + V Press\" / week: 2 / dayInWeek: 4 / duration: 3593s / exercises: {\n  Lat Pulldown Pronated Wide / 1x11 45kg, 1x12 47.5kg, 1x10 47.5kg / warmup: 1x12 45kg / target: 3x8-12 45kg @8 120s\n  Shoulder Press, Leverage Machine / 1x12 30kg, 2x9 30kg / warmup: 1x16 17.5kg, 1x10 22.5kg / target: 3x8-12 30kg @8 120s\n  Lateral Raise, Cable / 4x16 5kg / target: 4x12-16 5kg @8 75s\n  Seated Leg Curl / 1x15 10kg, 1x12 12.5kg, 1x14 12.5kg / target: 3x12-16 15kg @8 75s\n  Triceps Pushdown / 2x12 20kg, 1x11 20kg / warmup: 1x12 15kg / target: 3x12-16 7.5kg @8 75s\n  Side Plank / 2x1|1 0kg / target: 2x1 45s\n}"
+    },
+    {
       "id": 1786708762365,
       "text": "2026-08-14 11:59:22 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 2 - Day 3 \u2014 H Pull + H Press\" / week: 2 / dayInWeek: 3 / duration: 4403s / exercises: {\n  Incline Row / 1x12 14kg, 1x12 16kg, 1x9 16kg, 1x12 16kg / target: 4x8-12 14kg @8 120s\n  Incline Bench Press / 1x9 47.5kg, 1x8 47.5kg, 2x9 47.5kg / warmup: 1x12 25kg, 1x12 35kg / target: 3x8-12 47.5kg @8 120s, 1x8-12 47.5kg @9+ 120s\n  Lat Pulldown / 1x12 45kg, 1x10 50kg, 1x7 50kg / target: 3x8-12 50kg @8 90s\n  Lateral Raise, Cable / 2x15 5kg, 1x14 5kg, 1x12 5kg / target: 4x12-16 5kg @8 75s\n  // Front foot elevated on plates.\n  Deficit Reverse Lunge / 1x8 14kg, 1x8 12kg, 1x8 14kg / target: 3x12-16 11kg @8 75s\n  // Hands elevated deficit. AMRAP finisher - no load progression.\n  Deficit Push Up / 2x12 0kg / target: 2x8-12+ 0kg @8 90s\n  Bird Dog / 2x4 0kg / target: 2x8-12 0kg 45s\n}"
     },
