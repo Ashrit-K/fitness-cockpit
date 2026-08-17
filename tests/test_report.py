@@ -464,3 +464,47 @@ def test_a_run_of_reweighs_keeps_only_the_last():
         {"date": "2026-08-15T03:10:00.000Z", "value": "69.5kg"},
     ]})
     assert series == [{"d": "2026-08-15", "kg": 69.5}]
+
+
+# --------------------------------------------------------------- intensity
+
+def test_load_per_set_ignores_unloaded_sets():
+    # 2 loaded sets carrying 500 kg each, plus bodyweight work that carries none
+    s = sessions(rec("2026-01-05 09:00:00",
+                     "  Bench Press / 2x10 50kg\n  Pull Up / 5x10 0kg"))
+    w = report.weekly_volume(s, {}, MAP, weeks=1,
+                             now=report.datetime(2026, 1, 7).date())
+    it = w["intensity"]
+    assert it["loaded_sets"] == [2]          # the five pull-up sets are out
+    assert it["tonnage"] == [1000]
+    assert it["kg_per_set"] == [500.0]       # not 1000/7
+    assert it["kg_per_rep"] == [50.0]
+
+
+def test_load_per_set_is_zero_for_a_week_with_no_loaded_work():
+    s = sessions(rec("2026-01-05 09:00:00", "  Pull Up / 3x10 0kg"))
+    w = report.weekly_volume(s, {}, MAP, weeks=1,
+                             now=report.datetime(2026, 1, 7).date())
+    assert w["intensity"]["kg_per_set"] == [0.0]
+
+
+def test_load_per_set_by_group_is_credit_weighted():
+    # one exercise, Chest targeted and Triceps assisting — both see the same
+    # work per set, because the credit cancels in the ratio
+    s = sessions(rec("2026-01-05 09:00:00", "  Bench Press / 2x10 50kg"))
+    w = report.weekly_volume(s, {}, MAP, weeks=1,
+                             now=report.datetime(2026, 1, 7).date())
+    by = w["intensity"]["by_group"]
+    assert by["Chest"] == [500.0]
+    assert by["Triceps"] == [500.0]
+
+
+def test_the_headline_week_falls_back_when_the_current_one_is_empty():
+    # trained in the week of 5 Jan, nothing in the week of 12 Jan
+    s = sessions(rec("2026-01-05 09:00:00", "  Bench Press / 3x10 50kg"))
+    w = report.weekly_volume(s, {}, MAP, weeks=2,
+                             now=report.datetime(2026, 1, 14).date())
+    assert w["weeks"] == ["2026-01-05", "2026-01-12"]
+    assert w["current_week_empty"] is True
+    assert w["latest"] == 0                  # headline the week that holds work
+    assert w["performed"] == [3, 0]

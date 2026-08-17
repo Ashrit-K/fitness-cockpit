@@ -364,8 +364,14 @@
       <div id="fig-sets"></div>
     </div>
     <div class="card p5 flush">
-      <p class="card-h">Weekly tonnage <span class="r" id="ton-r">—</span></p>
+      <p class="card-h">Load per set <span class="r" id="ton-r">—</span></p>
       <div id="fig-tonnage"></div>
+    </div>
+
+    <div class="card p flush">
+      <p class="card-h">How heavy each group's work is
+        <span class="r" id="int-r">—</span></p>
+      <div id="intensity"></div>
     </div>
 
     <div class="card p8 flush">
@@ -1127,6 +1133,77 @@
       "week " + weeks[0].week + " → week " + weeks[weeks.length - 1].week));
   }
 
+  /* The same ratio per group: how much work each of that group's loaded sets
+     carried, this week against its own 12-week run. Groups whose work is all
+     bodyweight have no loaded sets and are left out — a pull-up has no tonnage
+     to divide. */
+  function intensityPanels(w, nWeeks, anchor) {
+    var it = w.intensity;
+    var from = w.weeks.length - nWeeks;
+    var weeks = w.weeks.slice(from);
+    var rows = GROUPS.map(function (g) {
+      var series = it.by_group[g].slice(from);
+      var loaded = it.loaded_sets_by_group[g].slice(from);
+      var seen = series.filter(function (v) { return v > 0; });
+      return {
+        g: g, series: series, loaded: loaded,
+        now: series[anchor - from],
+        perRep: it.per_rep_by_group[g][anchor],
+        mean: seen.length ? seen.reduce(function (a, b) { return a + b; }, 0) / seen.length : 0,
+        weeksSeen: seen.length
+      };
+    }).filter(function (r) { return r.weeksSeen >= 3; });
+    if (!rows.length) throw new Error("no group has enough loaded work");
+    rows.sort(function (a, b) { return b.now - a.now; });
+
+    var COLS = Math.min(rows.length, 5);
+    var PW = 232, PH = 118, GX = 6, GY = 10;
+    var nRows = Math.ceil(rows.length / COLS);
+    var W = COLS * PW + (COLS - 1) * GX, H = nRows * PH + (nRows - 1) * GY;
+    var s = svg("intensity", W, H);
+    s.setAttribute("aria-label", "Load carried per loaded set, by muscle group");
+
+    rows.forEach(function (r, idx) {
+      var px = (idx % COLS) * (PW + GX), py = Math.floor(idx / COLS) * (PH + GY);
+      var L = 4, R = 4, T = 34, B = 14;
+      var pw = PW - L - R, ph = PH - T - B;
+      var g0 = el("g", { transform: "translate(" + px + "," + py + ")" });
+      var top = Math.max.apply(null, r.series) || 1;
+      var up = r.now >= r.mean;
+
+      g0.appendChild(el("text", { x: 0, y: 11, class: "axlab" }, r.g));
+      g0.appendChild(el("text", { x: PW - 2, y: 13, class: "big", "text-anchor": "end",
+        "font-size": 15, fill: up ? "var(--good)" : "var(--warn)" }, fmt(r.now)));
+      g0.appendChild(el("text", { x: PW - 2, y: 27, class: "tick", "text-anchor": "end" },
+        "kg/set · mean " + fmt(r.mean)));
+      g0.appendChild(el("text", { x: 0, y: 27, class: "tick" },
+        fmt1(r.perRep) + " kg/rep"));
+
+      var slot = pw / r.series.length, bw = Math.max(slot - 2, 1.5);
+      r.series.forEach(function (v, i) {
+        var h = v / top * ph;
+        var isNow = i === anchor - from;
+        g0.appendChild(tipOn(el("rect", {
+          x: L + slot * i + (slot - bw) / 2, y: T + ph - h,
+          width: bw, height: Math.max(h, v > 0 ? 1 : 0), rx: 1,
+          fill: v > 0 ? (isNow ? "var(--series-1)" : "var(--series-1)") : "var(--grid)",
+          "fill-opacity": v > 0 ? (isNow ? 1 : 0.4) : 1
+        }), tk(r.g + " · week of " + shortDate(weeks[i])) +
+           tv(v > 0 ? "<b>" + fmt(v) + " kg per loaded set</b><br>" +
+                      fmtSet(r.loaded[i]) + " loaded sets"
+                    : "<b>no loaded sets</b>")));
+      });
+      var my = T + ph - r.mean / top * ph;
+      g0.appendChild(el("line", { x1: L, x2: PW - R, y1: my, y2: my,
+        stroke: "var(--ink-2)", "stroke-width": 1, "stroke-dasharray": "3 3" }));
+      g0.appendChild(el("line", { x1: L, x2: PW - R, y1: T + ph, y2: T + ph,
+        class: "baseline" }));
+      s.appendChild(g0);
+    });
+    txt("int-r", "kg × reps per loaded set · week of " + shortDate(w.weeks[anchor]) +
+        " · a group with no direct work is read through the compounds that assist it");
+  }
+
   /* Stacked weekly sets by area — six validated hues, 2px gap between segments. */
   function areaStack(w, nWeeks) {
     var weeks = w.weeks.slice(-nWeeks);
@@ -1188,36 +1265,59 @@
         delta(Math.round((tot - prev) * 10) / 10));
   }
 
-  /* Weekly tonnage is one measure, so it gets its own single-series chart. */
-  function tonnageWeeks(w, nWeeks) {
-    var weeks = w.weeks.slice(-nWeeks);
-    var totals = weeks.map(function (_x, i) {
-      var j = w.weeks.length - nWeeks + i;
-      return GROUPS.reduce(function (a, g) { return a + w.tonnage[g][j]; }, 0);
-    });
+  /* Tonnage on its own says little — a week of many easy sets and a week of
+     few heavy ones can total the same. Dividing by the sets that carried load
+     asks a sharper question: how much work did each set actually hold? Sets
+     with no external load are excluded from both sides, or the ratio would be
+     measuring bodyweight share instead. */
+  function loadPerSet(w, nWeeks, anchor) {
+    var it = w.intensity;
+    var from = w.weeks.length - nWeeks;
+    var weeks = w.weeks.slice(from);
+    var series = it.kg_per_set.slice(from);
+    var perRep = it.kg_per_rep.slice(from);
     var W = 420, H = 260, L = 40, R = 8, T = 12, B = 26;
     var pw = W - L - R, ph = H - T - B;
     var s = svg("fig-tonnage", W, H);
-    s.setAttribute("aria-label", "Weekly tonnage");
-    var ax = niceAxis(Math.max.apply(null, totals) || 1, 4);
-    yAxis(s, L, R, W, T, ph, ax.ticks, ax.top, function (v) { return fmt(v / 1000) + "t"; });
+    s.setAttribute("aria-label", "Load carried per working set, by week");
+    var ax = niceAxis(Math.max.apply(null, series) || 1, 4);
+    yAxis(s, L, R, W, T, ph, ax.ticks, ax.top, function (v) { return fmt(v); });
+    s.appendChild(el("text", { x: 0, y: 9, class: "axlab" }, "kg × reps per loaded set"));
+
     var slot = pw / weeks.length, bw = Math.max(slot - 3, 2);
+    var trained = [];
     weeks.forEach(function (wk, i) {
-      var h = totals[i] / ax.top * ph;
+      var v = series[i], h = v / ax.top * ph;
+      if (v > 0) trained.push(i);
       s.appendChild(tipOn(el("rect", {
-        x: L + slot * i + (slot - bw) / 2, y: T + ph - h, width: bw,
-        height: Math.max(h, 1), rx: 2, fill: "var(--series-1)"
-      }), tk("Week of " + shortDate(wk)) + tv("<b>" + fmt(totals[i]) + " kg</b>" +
-         (i > 0 ? "<br>" + delta(Math.round(totals[i] - totals[i - 1])) + " on last week" : ""))));
+        x: L + slot * i + (slot - bw) / 2, y: T + ph - h,
+        width: bw, height: Math.max(h, v > 0 ? 1 : 0), rx: 2,
+        fill: v > 0 ? "var(--series-1)" : "var(--grid)"
+      }), tk("Week of " + shortDate(wk)) + tv(v > 0
+         ? "<b>" + fmt(v) + " kg per loaded set</b><br>" +
+           fmt1(perRep[i]) + " kg per rep<br>" +
+           fmt(it.tonnage[from + i]) + " kg over " + it.loaded_sets[from + i] +
+           " loaded sets"
+         : "<b>no loaded sets</b>")));
       if ((weeks.length - 1 - i) % 4 === 0) {
         s.appendChild(el("text", { x: L + slot * i + slot / 2, y: H - 8, class: "tick",
                                    "text-anchor": "middle" }, shortDate(wk)));
       }
     });
+    /* the run of weeks that held work, so a rest week does not read as a crash */
+    var mean = trained.reduce(function (a, i) { return a + series[i]; }, 0) /
+               (trained.length || 1);
+    var my = T + ph - mean / ax.top * ph;
+    s.appendChild(el("line", { x1: L, x2: W - R, y1: my, y2: my, stroke: "var(--ink-2)",
+      "stroke-width": 1, "stroke-dasharray": "4 4" }));
+    s.appendChild(el("text", { x: L + 3, y: Math.max(my - 4, T + 8), class: "tick" },
+      nWeeks + "-week mean " + fmt(mean)));
     s.appendChild(el("line", { x1: L, x2: W - R, y1: T + ph, y2: T + ph, class: "baseline" }));
-    var n = totals.length - 1;
-    txt("ton-r", fmt(totals[n]) + " kg this week · " +
-        delta(Math.round(totals[n] - totals[n - 1])));
+
+    var n = anchor - from;
+    var prev = trained[trained.indexOf(n) - 1];
+    txt("ton-r", fmt(series[n]) + " kg/set · " + fmt1(perRep[n]) + " kg/rep" +
+        (prev === undefined ? "" : " · " + delta(Math.round(series[n] - series[prev]))));
   }
 
   function sessionSets(recent) {
@@ -1887,7 +1987,10 @@
 
   loadJSON("report.json").then(function (D) {
     LM = D.landmarks || {};
-    var w = D.weekly, last = w.weeks.length - 1;
+    var w = D.weekly;
+    /* the last week that holds training — on a Monday the calendar week is
+       still empty and every reading off it would be a useless zero */
+    var last = w.latest === undefined ? w.weeks.length - 1 : w.latest;
     var setsNow = w.performed[last], setsPrev = w.performed[last - 1];
 
     txt("rail-wt", D.goal.latest_kg ? fmt1(D.goal.latest_kg) + " kg" : "—");
@@ -1950,7 +2053,8 @@
     });
     draw("meters", function () { meters(w, D.vtaper, 12); });
     draw("fig-sets", function () { areaStack(w, 26); });
-    draw("fig-tonnage", function () { tonnageWeeks(w, 26); });
+    draw("fig-tonnage", function () { loadPerSet(w, 26, last); });
+    draw("intensity", function () { intensityPanels(w, 12, last); });
     draw("sessions", function () {
       if (!D.recent.length) throw new Error("no sessions");
       sessionSets(D.recent);
@@ -2117,7 +2221,8 @@
         ". The page renders whatever the exports hold at load time.");
   }).catch(function () {
     ["gauge", "fig-cut", "fig-history", "meters", "fig-sets", "fig-tonnage", "sessions",
-     "session-tonnage", "fig-targets", "body", "block", "patterns", "delts", "cal",
+     "session-tonnage", "fig-targets", "body", "block", "intensity", "patterns",
+     "delts", "cal",
      "months", "sps",
      "bwshare", "cats", "reps", "e1rm", "bwm", "life", "dow", "notes"]
       .forEach(unavailable);

@@ -510,8 +510,16 @@ def weekly_volume(sessions, customs, builtins, weeks=26, now=None):
     direct = {g: [0] * weeks for g in BROAD_GROUPS}
     indirect = {g: [0] * weeks for g in BROAD_GROUPS}
     tons = {g: [0.0] * weeks for g in BROAD_GROUPS}
+    # A set with no external load carries no tonnage, so leaving it in the
+    # denominator would make the ratio measure bodyweight share rather than
+    # how heavy the loaded work was. Loaded sets are counted separately.
+    loaded_sets = {g: [0.0] * weeks for g in BROAD_GROUPS}
+    loaded_reps = {g: [0.0] * weeks for g in BROAD_GROUPS}
     days = [set() for _ in range(weeks)]
     performed = [0] * weeks          # sets actually done, before any group credit
+    performed_loaded = [0] * weeks
+    total_tons = [0.0] * weeks
+    total_reps = [0] * weeks
     for ses in sessions:
         i = idx.get(monday(ses["date"]))
         if i is None:
@@ -519,21 +527,56 @@ def weekly_volume(sessions, customs, builtins, weeks=26, now=None):
         days[i].add(ses["date"])
         performed[i] += n_sets(ses)
         for name, s in all_sets(ses):
+            work = s["reps"] * s["weight_kg"]
+            if s["weight_kg"] > 0:
+                performed_loaded[i] += 1
+                total_tons[i] += work
+                total_reps[i] += s["reps"]
             for g, credit in weighted_groups(name, customs, builtins).items():
                 sets[g][i] += credit
-                tons[g][i] += credit * s["reps"] * s["weight_kg"]
+                tons[g][i] += credit * work
+                if s["weight_kg"] > 0:
+                    loaded_sets[g][i] += credit
+                    loaded_reps[g][i] += credit * s["reps"]
                 if credit == 1.0:
                     direct[g][i] += 1
                 else:
                     indirect[g][i] += 1
+
+    def ratio(num, den):
+        return [round(num[k] / den[k], 1) if den[k] else 0.0
+                for k in range(weeks)]
+
+    # On a Monday the current week is empty and every "this week" reading would
+    # be a true but useless zero, so the page headlines the last week that holds
+    # training and says which week that is.
+    latest = len(starts) - 1
+    while latest > 0 and performed[latest] == 0:
+        latest -= 1
+
     return {
         "weeks": [w.isoformat() for w in starts],
+        "latest": latest,
+        "current_week_empty": performed[len(starts) - 1] == 0,
         "sets": {g: [round(v, 1) for v in sets[g]] for g in BROAD_GROUPS},
         "direct": direct,
         "indirect": indirect,
         "tonnage": {g: [round(v) for v in tons[g]] for g in BROAD_GROUPS},
         "performed": performed,
         "sessions": [len(d) for d in days],
+        # how heavy the work was, rather than how much of it there was
+        "intensity": {
+            "kg_per_set": ratio(total_tons, performed_loaded),
+            "kg_per_rep": ratio(total_tons, total_reps),
+            "loaded_sets": performed_loaded,
+            "tonnage": [round(t) for t in total_tons],
+            "reps": total_reps,
+            "by_group": {g: ratio(tons[g], loaded_sets[g]) for g in BROAD_GROUPS},
+            "per_rep_by_group": {g: ratio(tons[g], loaded_reps[g])
+                                 for g in BROAD_GROUPS},
+            "loaded_sets_by_group": {g: [round(v, 1) for v in loaded_sets[g]]
+                                     for g in BROAD_GROUPS},
+        },
     }
 
 
@@ -863,9 +906,11 @@ def goal_facts(goal):
 
 
 def volume_facts(vol, recent, watch):
-    f = {}
-    last = len(vol["weeks"]) - 1
+    last = vol["latest"]
     prev = last - 1
+    f = {}
+    f["week_of"] = vol["weeks"][last]
+    f["current_week_empty"] = "yes" if vol["current_week_empty"] else "no"
     total_now = vol["performed"][last]
     total_prev = vol["performed"][prev] if prev >= 0 else 0
     f["sets_this_week"] = "%g" % round(total_now, 1)
@@ -970,11 +1015,14 @@ def build(records, weights, customs, builtins, now=None):
     marks = milestones(series, goal)
     vol = weekly_volume(sessions, customs, builtins, now=now)
     recent = recent_sessions(sessions, customs, builtins)
-    bodymap = muscle_week(sessions, customs, builtins, now=now)
+    bodymap = muscle_week(sessions, customs, builtins)
     block = mesocycle(sessions, customs, builtins)
     watch = strength_watch(sessions, now)
-    pats = pattern_series(sessions, now)
-    delts = delt_heads(sessions, now)
+    # weekly views anchor to the last week that holds training: on a Monday the
+    # calendar week is empty and every reading off it would be a useless zero
+    trained_through = sessions[-1]["date"]
+    pats = pattern_series(sessions, trained_through)
+    delts = delt_heads(sessions, trained_through)
 
     facts = build_facts(sessions, m, cal, lay, mon, yrs, cats, reps,
                         e1rm, bw, life, dow)
