@@ -310,6 +310,7 @@
     <span class="rl"><span>WT</span><b id="rail-wt">—</b></span>
     <span class="rl"><span>GOAL</span><b id="rail-goal">—</b></span>
     <span class="rl"><span>RATE</span><b id="rail-rate">—</b></span>
+    <span class="rl"><span>64 KG BY</span><b id="rail-eta">—</b></span>
     <span class="rl"><span>SETS/WK</span><b id="rail-sets">—</b></span>
     <span class="rl"><span>SESSIONS/WK</span><b id="rail-sess">—</b></span>
     <span class="rl"><span>LAST</span><b id="rail-last">—</b></span>
@@ -550,6 +551,19 @@
   function shortDate(iso) {
     var d = new Date(dnum(iso));
     return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+  }
+  /* Where the goal lands if the current pace holds: a single best-estimate
+     date, counted from the last reading rather than from today, so it does not
+     drift on a day with no weigh-in. */
+  function projectDate(fromISO, kgToGo, ratePerWeek) {
+    if (!ratePerWeek || ratePerWeek >= 0 || kgToGo <= 0) return null;
+    var weeks = Math.abs(kgToGo / ratePerWeek);
+    return new Date(dnum(fromISO) + weeks * 7 * 86400000);
+  }
+  function dateLabel(d) {
+    return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] +
+      (d.getUTCFullYear() === new Date().getUTCFullYear()
+        ? "" : " " + d.getUTCFullYear());
   }
   function signed(v) {
     return (v < 0 ? "−" : "+") + (Math.round(Math.abs(v) * 100) / 100).toFixed(2);
@@ -2173,13 +2187,24 @@
               : fast ? "faster than the " + signed(target) + " target"
               : "at or under the " + signed(target) + " target")
           : "provisional · " + dense.readings + " readings over " + dense.days + " days" });
-      kpi("kpi-eta", { k: "Reaches goal",
-        v: D.goal.reached ? "—" : fmt(Math.abs(toGoal / target)),
-        u: D.goal.reached ? "" : "wk",
-        n: D.goal.reached ? "already there"
-          : settled ? "at target rate · " + (trend < 0 ? fmt(Math.abs(toGoal / trend)) +
-              " wk at the measured rate" : "not losing at present")
-          : "at target rate · trend settles in " + settles + " days" });
+      var etaPace = projectDate(st.latest_date, toGoal, trend);
+      var etaTarget = projectDate(st.latest_date, toGoal, target);
+      var etaNote;
+      if (D.goal.reached) {
+        etaNote = "already there";
+      } else if (!etaPace) {
+        etaNote = "not losing at present · " +
+          (etaTarget ? dateLabel(etaTarget) + " at the " + signed(target) + " target" : "");
+      } else {
+        etaNote = "at " + signed(trend) + " kg/wk · " +
+          (etaTarget ? dateLabel(etaTarget) + " at the " + signed(target) + " target" : "") +
+          (settled ? "" : " · pace still provisional");
+      }
+      kpi("kpi-eta", { k: "Reaches " + fmt1(D.goal.high) + " kg",
+        v: D.goal.reached ? "reached" : etaPace ? dateLabel(etaPace) : "—",
+        n: etaNote });
+      txt("rail-eta", D.goal.reached ? "reached"
+          : etaPace ? dateLabel(etaPace) : "—");
 
       txt("cut-r", "from " + longDate(st.dense_start) + " · " + dense.readings +
           " readings · " + (settled ? "trend settled" : "settles in " + settles + " days"));
