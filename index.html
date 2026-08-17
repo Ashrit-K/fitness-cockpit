@@ -321,12 +321,13 @@
 
   <p class="band">Weight <em>primary</em></p>
   <div class="grid">
-    <div class="card p4">
-      <p class="card-h">Peak → goal <span class="r" id="gauge-r">—</span></p>
-      <div id="gauge"></div>
-      <div class="miles" id="milestones"></div>
+    <div class="card p">
+      <p class="card-h">Peak → goal
+        <span class="r">position is the y axis · pace is the slope · every mark gets a date</span></p>
+      <div class="readout" id="ro-burn"></div>
+      <div id="burn"></div>
     </div>
-    <div class="card p8">
+    <div class="card p">
       <p class="card-h">Dense window <span class="r" id="cut-r">—</span></p>
       <div id="fig-cut"></div>
       <div class="legend" id="legend-cut"></div>
@@ -753,6 +754,11 @@
                                  "text-anchor": "end" }, (fmtv || fmt)(v)));
     });
   }
+  /* Weekly views end on the anchor week — the last one that holds training —
+     not on the calendar's current week, which is empty until the first session. */
+  function upTo(arr, n, anchor) {
+    return arr.slice(Math.max(0, anchor - n + 1), anchor + 1);
+  }
   function toAreas(sets, n) {
     var out = {};
     AREAS.forEach(function (a) { out[a] = new Array(n).fill(0); });
@@ -764,6 +770,144 @@
   }
 
   /* ============================================================ WEIGHT */
+
+  /* Distance to goal on the y axis, so how far down the line sits is the
+     progress and its slope is the pace. Milestones are leader lines: each
+     starts where the curve reaches that weight and runs right to its labels,
+     so none of them rules through the path it is measuring. Every mark ahead
+     carries both dates — observed and target — so a colour never stands alone.
+     The right axis reads the same scale as body weight. */
+  function burndown(goal, milestones, series, st) {
+    var W = 1240, H = 330, L = 52, R = 250, T = 46, B = 30;
+    var pw = W - L - R, ph = H - T - B;
+    var s = svg("burn", W, H);
+    s.setAttribute("aria-label", "Kilograms to goal over time, with milestones");
+
+    var GOAL = goal.high, rem = goal.smooth_kg - GOAL;
+    var anchor = dnum(goal.latest_date);
+    var path = series.filter(function (p) { return p.d >= goal.peak_date; });
+    var rate = st && st.trend_kg_per_week < 0 ? Math.abs(st.trend_kg_per_week) / 7 : null;
+    var target = st && st.target_kg_per_week < 0 ? Math.abs(st.target_kg_per_week) / 7 : null;
+
+    var t0 = dnum(goal.peak_date);
+    var t1 = rate ? anchor + rem / rate * 86400000 + 5 * 86400000
+                  : anchor + 30 * 86400000;
+    var top = Math.max(goal.peak_kg - GOAL, rem) * 1.06 || 1;
+    function X(t) { return L + (t - t0) / (t1 - t0) * pw; }
+    function Y(v) { return T + ph - v / top * ph; }
+    function whenAt(v, perDay) {
+      return perDay ? anchor + (rem - v) / perDay * 86400000 : null;
+    }
+
+    niceAxis(top, 4).ticks.forEach(function (v) {
+      if (v > top) return;
+      s.appendChild(el("line", { x1: L, x2: W - R, y1: Y(v), y2: Y(v), class: "gridline" }));
+      s.appendChild(el("text", { x: L - 7, y: Y(v) + 3.5, class: "tick",
+                                 "text-anchor": "end" }, fmt1(v)));
+    });
+    s.appendChild(el("text", { x: 0, y: 11, class: "axlab" }, "kg to goal"));
+
+    /* the same scale, read as body weight */
+    s.appendChild(el("line", { x1: W - R, x2: W - R, y1: T, y2: T + ph, class: "baseline" }));
+    s.appendChild(el("text", { x: W - R + 6, y: 11, class: "axlab" }, "body weight"));
+    for (var kg = Math.ceil(GOAL); kg - GOAL <= top; kg++) {
+      var y = Y(kg - GOAL), major = kg % 2 === 0;
+      s.appendChild(el("line", { x1: L, x2: W - R, y1: y, y2: y, stroke: "var(--grid)",
+        "stroke-width": 1, "stroke-opacity": major ? 0 : 0.45, "stroke-dasharray": "2 4" }));
+      s.appendChild(el("line", { x1: W - R, x2: W - R + 4, y1: y, y2: y,
+        stroke: "var(--rule)", "stroke-width": 1 }));
+      s.appendChild(el("text", { x: W - R + 8, y: y + 3.5, class: "tick",
+        "font-size": major ? 10.5 : 9.5,
+        style: "fill:" + (major ? "var(--ink-2)" : "var(--muted)") }, kg.toFixed(1)));
+    }
+    s.appendChild(el("text", { x: W - R + 44, y: T - 8, class: "tick",
+      style: "fill:var(--series-1)" }, "observed"));
+    s.appendChild(el("text", { x: W - R + 118, y: T - 8, class: "tick",
+      style: "fill:var(--good)" }, "target"));
+
+    var spanDays = (t1 - t0) / 86400000;
+    var step = spanDays > 120 ? 21 : spanDays > 60 ? 14 : 7;
+    for (var t = t0; t <= t1; t += step * 86400000) {
+      var x = X(t);
+      s.appendChild(el("line", { x1: x, x2: x, y1: T, y2: T + ph, class: "gridline" }));
+      s.appendChild(el("text", { x: x, y: H - 8, class: "tick", "text-anchor": "middle" },
+        shortDate(new Date(t).toISOString())));
+    }
+
+    milestones.forEach(function (m) {
+      var v = m.kg - GOAL;
+      if (v > top || v < 0) return;
+      var y = Y(v);
+      var hitAt = m.hit && m.date ? dnum(m.date) : null;
+      var obs = hitAt === null ? whenAt(v, rate) : null;
+      var from = hitAt !== null ? X(hitAt) : obs !== null ? X(obs) : L;
+      s.appendChild(el("line", { x1: Math.max(from, L), x2: W - R, y1: y, y2: y,
+        stroke: m.hit ? "var(--series-4)" : "var(--rule)",
+        "stroke-width": 1, "stroke-dasharray": "4 4" }));
+      s.appendChild(el("text", { x: W - R + 44, y: y - 3, class: "dlab",
+        style: "fill:" + (m.hit ? "var(--series-4)" : "var(--ink-2)") },
+        (m.hit ? "★ " : "") + (m.goal ? "goal · " + fmt1(m.kg)
+                                      : m.label + " · " + fmt1(m.kg))));
+      if (hitAt !== null) {
+        s.appendChild(el("text", { x: W - R + 44, y: y + 10, class: "tick",
+          style: "fill:var(--series-4)" }, shortDate(m.date)));
+        var at = path.filter(function (p) { return p.d === m.date; })[0];
+        if (at) {
+          s.appendChild(tipOn(el("path", { d: starPath(0, 0, 7),
+            transform: "translate(" + X(hitAt).toFixed(1) + "," + Y(at.kg - GOAL).toFixed(1) + ")",
+            fill: "var(--series-4)", stroke: "var(--surface)", "stroke-width": 1 }),
+            tk(m.label) + tv("<b>" + fmt1(m.kg) + " kg</b> reached on " + longDate(m.date))));
+        }
+        return;
+      }
+      if (obs !== null) {
+        s.appendChild(el("text", { x: W - R + 44, y: y + 10, class: "tick",
+          style: "fill:var(--series-1)" }, "~ " + shortDate(new Date(obs).toISOString())));
+        s.appendChild(tipOn(el("circle", { cx: X(obs), cy: y, r: 3.6,
+          fill: "var(--series-1)", stroke: "var(--surface)", "stroke-width": 1.5 }),
+          tk(m.label + " · at the observed pace") +
+          tv("<b>" + fmt1(m.kg) + " kg</b> around " +
+             longDate(new Date(obs).toISOString()))));
+      }
+      var tgt = whenAt(v, target);
+      if (tgt !== null) {
+        s.appendChild(el("text", { x: W - R + 118, y: y + 10, class: "tick",
+          style: "fill:var(--good)" }, "~ " + shortDate(new Date(tgt).toISOString())));
+      }
+    });
+
+    if (path.length > 1) {
+      s.appendChild(el("path", { d: path.map(function (p, i) {
+        return (i ? "L" : "M") + X(dnum(p.d)).toFixed(1) + " " + Y(p.kg - GOAL).toFixed(1);
+      }).join(" "), fill: "none", stroke: "var(--series-1)", "stroke-width": 2.4,
+        "stroke-linejoin": "round" }));
+    }
+    path.forEach(function (p) {
+      s.appendChild(tipOn(el("circle", { cx: X(dnum(p.d)), cy: Y(p.kg - GOAL), r: 2.8,
+        fill: "var(--series-1)", "fill-opacity": 0.5 }),
+        tk(longDate(p.d)) + tv("<b>" + fmt1(p.kg) + " kg</b> · " +
+           fmt1(p.kg - GOAL) + " kg to go")));
+    });
+
+    /* the target pace is truncated at the edge — its job is to show a shallower
+       slope, not to stretch the chart out to its own landing date */
+    [[rate, "var(--series-1)", "6 4"], [target, "var(--good)", "2 4"]].forEach(function (r) {
+      if (!r[0]) return;
+      var end = anchor + rem / r[0] * 86400000;
+      var yEnd = end > t1 ? rem - r[0] * ((t1 - anchor) / 86400000) : 0;
+      s.appendChild(el("line", { x1: X(anchor), y1: Y(rem), x2: X(Math.min(end, t1)),
+        y2: Y(Math.max(yEnd, 0)), stroke: r[1], "stroke-width": 2, "stroke-dasharray": r[2] }));
+    });
+    if (st) {
+      s.appendChild(el("text", { x: L + 4, y: T + 13, class: "tick",
+        style: "fill:var(--series-1)" }, "measured " + signed(st.trend_kg_per_week) + " kg/wk"));
+      s.appendChild(el("text", { x: L + 4, y: T + 25, class: "tick",
+        style: "fill:var(--good)" }, "target " + signed(st.target_kg_per_week) + " kg/wk"));
+    }
+    s.appendChild(el("circle", { cx: X(anchor), cy: Y(rem), r: 5, fill: "var(--ink)",
+      stroke: "var(--surface)", "stroke-width": 2 }));
+    s.appendChild(el("line", { x1: L, x2: W - R, y1: Y(0), y2: Y(0), class: "baseline" }));
+  }
 
   function gauge(goal) {
     var W = 300, H = 168, cx = W / 2, cy = 126, r = 104;
@@ -1020,8 +1164,8 @@
     var was = values.length > 1 ? values[values.length - 2] : 0;
     var col = bandColor(now, g);
     s.appendChild(el("text", { x: 2, y: 11, class: "axlab" }, g));
-    s.appendChild(el("text", { x: W - 2, y: 15, class: "big", "text-anchor": "end",
-                               fill: col }, fmtSet(now)));
+    s.appendChild(el("text", { x: W - 2, y: 15, class: "big", style: "fill:" + (col), "text-anchor": "end",
+                               }, fmtSet(now)));
     var allIndirect = direct[direct.length - 1] === 0 && now > 0;
     s.appendChild(el("text", { x: W - 2, y: 29, class: "tick", "text-anchor": "end" },
       delta(now - was) + " · " + bandState(now, g) +
@@ -1075,14 +1219,16 @@
     return box;
   }
 
-  function meters(w, vt, nWeeks) {
+  function meters(w, vt, nWeeks, anchor) {
     var host = document.getElementById("meters");
     host.innerHTML = "";
-    var weeks = w.weeks.slice(-nWeeks);
+    var weeks = upTo(w.weeks, nWeeks, anchor);
     var order = vt.concat(GROUPS.filter(function (g) { return vt.indexOf(g) < 0; }));
     order.forEach(function (g) {
-      host.appendChild(meterCard(g, weeks, w.sets[g].slice(-nWeeks), vt.indexOf(g) >= 0,
-                                 w.direct[g].slice(-nWeeks), w.indirect[g].slice(-nWeeks)));
+      host.appendChild(meterCard(g, weeks, upTo(w.sets[g], nWeeks, anchor),
+                                 vt.indexOf(g) >= 0,
+                                 upTo(w.direct[g], nWeeks, anchor),
+                                 upTo(w.indirect[g], nWeeks, anchor)));
     });
   }
 
@@ -1187,8 +1333,8 @@
       var up = r.now >= r.mean;
 
       g0.appendChild(el("text", { x: 0, y: 11, class: "axlab" }, r.g));
-      g0.appendChild(el("text", { x: PW - 2, y: 13, class: "big", "text-anchor": "end",
-        "font-size": 15, fill: up ? "var(--good)" : "var(--warn)" }, fmt(r.now)));
+      g0.appendChild(el("text", { x: PW - 2, y: 13, class: "big", style: "fill:" + (up ? "var(--good)" : "var(--warn)"), "text-anchor": "end",
+        "font-size": 15, }, fmt(r.now)));
       g0.appendChild(el("text", { x: PW - 2, y: 27, class: "tick", "text-anchor": "end" },
         "kg/set · mean " + fmt(r.mean)));
       g0.appendChild(el("text", { x: 0, y: 27, class: "tick" },
@@ -1220,8 +1366,9 @@
   }
 
   /* Stacked weekly sets by area — six validated hues, 2px gap between segments. */
-  function areaStack(w, nWeeks) {
-    var weeks = w.weeks.slice(-nWeeks);
+  function areaStack(w, nWeeks, anchorIdx) {
+    var from = w.weeks.length - nWeeks;
+    var weeks = w.weeks.slice(from);
     var data = toAreas(w.sets, w.weeks.length);
     AREAS.forEach(function (a) { data[a] = data[a].slice(-nWeeks); });
     var hidden = {};
@@ -1273,7 +1420,7 @@
     legend("legend-cat", AREAS.map(function (a) { return { l: a, c: AREA_COLOR[a] }; }),
       function (name, off) { hidden[name] = off; render(); });
     render();
-    var last = weeks.length - 1;
+    var last = anchorIdx - from;
     var tot = AREAS.reduce(function (a, k) { return a + data[k][last]; }, 0);
     var prev = AREAS.reduce(function (a, k) { return a + data[k][last - 1]; }, 0);
     txt("vol-r", fmtSet(tot) + " effective sets this week · " +
@@ -1407,8 +1554,8 @@
     s.appendChild(el("line", { x1: L, x2: W - R, y1: T + ph, y2: T + ph, class: "baseline" }));
   }
 
-  function targetHeat(w, nWeeks) {
-    var weeks = w.weeks.slice(-nWeeks);
+  function targetHeat(w, nWeeks, anchor) {
+    var weeks = upTo(w.weeks, nWeeks, anchor);
     legend("legend-targets", [
       { l: "under MEV", c: "var(--warn)" },
       { l: "MEV to MAV", c: "var(--good)" },
@@ -1426,8 +1573,8 @@
                                  "text-anchor": "middle" }, shortDate(wk)));
     });
     GROUPS.forEach(function (g, r) {
-      var series = w.sets[g].slice(-nWeeks);
-      var dir = w.direct[g].slice(-nWeeks), ind = w.indirect[g].slice(-nWeeks);
+      var series = upTo(w.sets[g], nWeeks, anchor);
+      var dir = upTo(w.direct[g], nWeeks, anchor), ind = upTo(w.indirect[g], nWeeks, anchor);
       s.appendChild(el("text", { x: LABEL - 10, y: HEAD + CH * r + CH / 2 + 4,
                                  class: "axlab", "text-anchor": "end" }, g));
       series.forEach(function (v, c) {
@@ -1444,8 +1591,9 @@
         }, fmtSet(v)));
         if (c > 0 && move !== 0) {
           s.appendChild(el("text", {
-            x: x + CW - 7, y: y + CH / 2 + 3.5, class: "tick", "text-anchor": "end",
-            fill: none ? "var(--muted)" : "#fff", "fill-opacity": 0.85
+            x: x + CW - 7, y: y + CH / 2 + 3.5, class: "tick",
+            style: "fill:" + (none ? "var(--muted)" : "#fff"),
+            "text-anchor": "end", "fill-opacity": 0.85
           }, move > 0 ? "▲" : "▼"));
         }
         s.appendChild(tipOn(el("rect", { x: x, y: y, width: CW, height: CH, class: "hit" }),
@@ -2014,9 +2162,9 @@
     txt("rail-sess", w.sessions[last]);
     txt("rail-last", D.recent.length ? shortDate(D.recent[D.recent.length - 1].d) : "—");
 
-    draw("gauge", function () {
-      gauge(D.goal);
-      milestoneChips(D.milestones, D.goal.smooth_kg);
+    draw("burn", function () {
+      if (!D.weight.length) throw new Error("no weigh-ins");
+      burndown(D.goal, D.milestones, D.weight, null);
     });
 
     /* volume tiles */
@@ -2066,8 +2214,8 @@
           c: prev && tot(wk) >= tot(prev) ? "down" : null }
       ]);
     });
-    draw("meters", function () { meters(w, D.vtaper, 12); });
-    draw("fig-sets", function () { areaStack(w, 26); });
+    draw("meters", function () { meters(w, D.vtaper, 12, last); });
+    draw("fig-sets", function () { areaStack(w, 26, last); });
     draw("fig-tonnage", function () { loadPerSet(w, 26, last); });
     draw("intensity", function () { intensityPanels(w, 12, last); });
     draw("sessions", function () {
@@ -2075,7 +2223,7 @@
       sessionSets(D.recent);
     });
     draw("session-tonnage", function () { sessionTonnage(D.recent); });
-    draw("fig-targets", function () { targetHeat(w, 6); });
+    draw("fig-targets", function () { targetHeat(w, 6, last); });
     loadJSON("data/body_muscles.json").then(function (shapes) {
       draw("body", function () { bodyFigure(shapes, D.bodyMap); });
     }).catch(function () { unavailable("body"); });
@@ -2163,6 +2311,18 @@
     });
 
     loadJSON("stats.json").then(function (st) {
+      /* the pace lines need stats, which lands after the report */
+      draw("burn", function () { burndown(D.goal, D.milestones, D.weight, st); });
+      var next = D.milestones.filter(function (m) { return !m.hit; })[0];
+      var toNext = next ? D.goal.smooth_kg - next.kg : null;
+      readout("ro-burn", [
+        { k: "Now", v: fmt1(D.goal.smooth_kg) + " kg" },
+        { k: "Off the peak", v: fmt1(D.goal.lost_kg) + " kg" },
+        { k: "To goal", v: fmt1(D.goal.to_goal_kg) + " kg" },
+        { k: "Progress", v: fmt(D.goal.progress_pct) + "%" },
+        { k: "Next mark", v: next ? fmt1(next.kg) + " · " + fmt1(toNext) + " kg" : "—" },
+        { k: "Peak", v: fmt1(D.goal.peak_kg) + " on " + shortDate(D.goal.peak_date) }
+      ]);
       var denseStart = dnum(st.dense_start);
       /* the dense window only: readings from the day dense reporting began */
       var cut = D.weight.filter(function (p) { return dnum(p.d) >= denseStart; });
@@ -2214,7 +2374,7 @@
       draw("fig-cut", function () {
         if (cut.length < 2) throw new Error("dense window too short");
         weightChart("fig-cut", cut, {
-          width: 760, height: 240, maxGap: 14, label: "Body weight, dense window",
+          width: 1220, height: 240, maxGap: 14, label: "Body weight, dense window",
           band: { low: D.goal.low, high: D.goal.high },
           milestones: D.milestones, smoothDays: 5,
           /* project about twice as far as the window is long, so the readings
@@ -2248,7 +2408,7 @@
     txt("footer-updated", "Pipeline last ran " + stamp +
         ". The page renders whatever the exports hold at load time.");
   }).catch(function () {
-    ["gauge", "fig-cut", "fig-history", "meters", "fig-sets", "fig-tonnage", "sessions",
+    ["burn", "fig-cut", "fig-history", "meters", "fig-sets", "fig-tonnage", "sessions",
      "session-tonnage", "fig-targets", "body", "block", "intensity", "patterns",
      "delts", "cal",
      "months", "sps",
