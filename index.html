@@ -803,7 +803,7 @@
 
     var big = el("text", { x: cx, y: cy - 22, "text-anchor": "middle",
                            class: "big", "font-size": 40 });
-    big.textContent = fmt1(goal.latest_kg);
+    big.textContent = fmt1(goal.smooth_kg);
     s.appendChild(big);
     s.appendChild(el("text", { x: cx, y: cy - 2, "text-anchor": "middle", class: "tick" },
       "kg · " + fmt(goal.progress_pct) + "% to goal"));
@@ -996,11 +996,12 @@
 
     /* the last reading is labelled above the point, clear of the trend rays */
     var lastp = points[points.length - 1];
+    var lastKg = opts.smoothDays ? sm[sm.length - 1] : lastp.kg;
     var lastX = X(dnum(lastp.d)), atEdge = lastX + 40 > W - 2;
     s.appendChild(el("text", {
-      x: atEdge ? W - 2 : lastX + 7, y: Y(lastp.kg) - 9,
+      x: atEdge ? W - 2 : lastX + 7, y: Y(lastKg) - 9,
       class: "dlab", "text-anchor": atEdge ? "end" : "start", fill: "var(--ink)"
-    }, fmt1(lastp.kg)));
+    }, fmt1(lastKg)));
   }
 
   /* ============================================================ VOLUME */
@@ -2007,7 +2008,7 @@
     var last = w.latest === undefined ? w.weeks.length - 1 : w.latest;
     var setsNow = w.performed[last], setsPrev = w.performed[last - 1];
 
-    txt("rail-wt", D.goal.latest_kg ? fmt1(D.goal.latest_kg) + " kg" : "—");
+    txt("rail-wt", D.goal.smooth_kg ? fmt1(D.goal.smooth_kg) + " kg" : "—");
     txt("rail-goal", fmt1(D.goal.high) + " kg");
     txt("rail-sets", setsNow + " (" + delta(setsNow - setsPrev) + ")");
     txt("rail-sess", w.sessions[last]);
@@ -2015,7 +2016,7 @@
 
     draw("gauge", function () {
       gauge(D.goal);
-      milestoneChips(D.milestones, D.goal.latest_kg);
+      milestoneChips(D.milestones, D.goal.smooth_kg);
     });
 
     /* volume tiles */
@@ -2170,12 +2171,14 @@
       var settled = dense.days >= TREND_MIN_DAYS;
       var settles = Math.max(0, TREND_MIN_DAYS - dense.days);
       var trend = st.trend_kg_per_week, target = st.target_kg_per_week;
-      var toGoal = D.goal.latest_kg - D.goal.high;
+      /* the projection starts from the estimate, not from one morning */
+      var toGoal = D.goal.smooth_kg - D.goal.high;
       var fast = trend < 0 && Math.abs(trend) > Math.abs(target) * 1.5;
 
       txt("rail-rate", signed(trend) + " kg/wk");
-      kpi("kpi-weight", { k: "Body weight", v: fmt1(st.latest_kg), u: "kg",
-        n: "on " + longDate(st.latest_date) });
+      kpi("kpi-weight", { k: "Body weight", v: fmt1(D.goal.smooth_kg), u: "kg",
+        n: D.goal.smooth_window_days + "-day estimate · last reading " +
+           fmt1(D.goal.latest_kg) + " on " + longDate(D.goal.latest_date) });
       kpi("kpi-togo", { k: "To goal",
         v: D.goal.reached ? "reached" : fmt1(Math.abs(toGoal)),
         u: D.goal.reached ? "" : "kg", c: D.goal.reached ? "good" : null,

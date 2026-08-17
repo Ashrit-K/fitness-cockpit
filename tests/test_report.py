@@ -508,3 +508,37 @@ def test_the_headline_week_falls_back_when_the_current_one_is_empty():
     assert w["current_week_empty"] is True
     assert w["latest"] == 0                  # headline the week that holds work
     assert w["performed"] == [3, 0]
+
+
+# --------------------------------------------------------------- smoothing
+
+def test_the_headline_weight_is_smoothed_not_the_last_reading():
+    series = [{"d": "2026-08-13", "kg": 69.6},
+              {"d": "2026-08-14", "kg": 69.5},
+              {"d": "2026-08-15", "kg": 69.5},
+              {"d": "2026-08-16", "kg": 69.9},
+              {"d": "2026-08-17", "kg": 69.9}]
+    est = report.smoothed_weight(series)
+    assert est < 69.9                       # the spike does not become the headline
+    assert 69.5 < est < 69.9                # but it does pull the estimate up
+
+
+def test_a_lone_reading_is_its_own_estimate():
+    assert report.smoothed_weight([{"d": "2026-08-17", "kg": 70.0}]) == 70.0
+
+
+def test_smoothing_ignores_readings_outside_the_window():
+    series = [{"d": "2026-01-01", "kg": 90.0},     # months old, must not count
+              {"d": "2026-08-16", "kg": 70.0},
+              {"d": "2026-08-17", "kg": 70.0}]
+    assert report.smoothed_weight(series) == 70.0
+
+
+def test_the_goal_gap_is_measured_from_the_estimate():
+    series = [{"d": "2026-08-16", "kg": 69.0},
+              {"d": "2026-08-17", "kg": 70.0}]
+    g = report.goal_block(series)
+    est = report.smoothed_weight(series)
+    assert g["smooth_kg"] == est
+    assert g["latest_kg"] == 70.0            # the reading is still reported
+    assert g["to_goal_kg"] == round(est - report.GOAL_KG, 1)

@@ -5,6 +5,7 @@ Each function takes data and returns data, so the tests never touch the disk.
 """
 
 import json
+import math
 import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
@@ -43,6 +44,12 @@ BW_SET_SHARE = 0.8      # a movement is bodyweight at this share of 0 kg sets
 GOAL_KG = 64.0
 GOAL_LOW_KG = GOAL_KG
 GOAL_HIGH_KG = GOAL_KG
+
+# The headline weight is a smoothed estimate, not the last reading. A scale is
+# only good to about half a kilo and body weight swings on water and food, so a
+# single number off one morning is the noisiest thing on the page. Seven days
+# spans a full week of eating and training.
+SMOOTH_WINDOW_DAYS = 7
 
 # Fixed, evenly spaced markers on the way down from the peak.
 MILESTONE_PCTS = [2.5, 5.0, 7.5]
@@ -683,16 +690,41 @@ def recent_sessions(sessions, customs, builtins, n=24):
     return out
 
 
+def smoothed_weight(series, window=SMOOTH_WINDOW_DAYS):
+    """Gaussian-weighted estimate of current weight at the last reading.
+
+    Weighted by distance in days rather than by position, so a gap between
+    weigh-ins does not distort it. Only past readings exist at the last point,
+    so this lags the raw number slightly — which is the point.
+    """
+    if not series:
+        return None
+    last = datetime.fromisoformat(series[-1]["d"]).date()
+    sigma = window / 3.0
+    num = den = 0.0
+    for p in series:
+        dt = (datetime.fromisoformat(p["d"]).date() - last).days
+        if abs(dt) > window:
+            continue
+        w = math.exp(-0.5 * (dt / sigma) ** 2)
+        num += w * p["kg"]
+        den += w
+    return round(num / den, 2) if den else None
+
+
 def goal_block(series):
     """Where the body weight sits against the target band, and how far it has come."""
     goal = {"low": GOAL_LOW_KG, "high": GOAL_HIGH_KG}
     if not series:
         return goal
     latest = series[-1]
-    goal["latest_kg"] = latest["kg"]
+    smooth = smoothed_weight(series)
+    goal["latest_kg"] = latest["kg"]          # the reading itself
     goal["latest_date"] = latest["d"]
-    goal["to_goal_kg"] = round(latest["kg"] - GOAL_HIGH_KG, 1)
-    goal["reached"] = latest["kg"] <= GOAL_HIGH_KG
+    goal["smooth_kg"] = smooth                # the best estimate of where you are
+    goal["smooth_window_days"] = SMOOTH_WINDOW_DAYS
+    goal["to_goal_kg"] = round(smooth - GOAL_HIGH_KG, 1)
+    goal["reached"] = smooth <= GOAL_HIGH_KG
     goal["in_band"] = goal["reached"]        # kept for older page builds
 
     # The start of the cut is the highest reading in the year before the latest one.
@@ -702,9 +734,9 @@ def goal_block(series):
     peak = max(window, key=lambda p: p["kg"])
     goal["peak_kg"] = peak["kg"]
     goal["peak_date"] = peak["d"]
-    goal["lost_kg"] = round(peak["kg"] - latest["kg"], 1)
+    goal["lost_kg"] = round(peak["kg"] - smooth, 1)
     total = peak["kg"] - GOAL_HIGH_KG
-    goal["progress_pct"] = round(100 * min(1.0, max(0.0, (peak["kg"] - latest["kg"]) / total)), 1) \
+    goal["progress_pct"] = round(100 * min(1.0, max(0.0, (peak["kg"] - smooth) / total)), 1) \
         if total > 0 else 100.0
     return goal
 
@@ -894,7 +926,8 @@ def goal_facts(goal):
     f["goal_band"] = "%g kg" % goal["high"]
     if "latest_kg" not in goal:
         return f
-    f["weight_now"] = "%.1f kg" % goal["latest_kg"]
+    f["weight_now"] = "%.1f kg" % goal["smooth_kg"]
+    f["weight_reading"] = "%.1f kg" % goal["latest_kg"]
     f["weight_date"] = goal["latest_date"]
     f["to_goal"] = ("reached" if goal["reached"]
                     else "%.1f kg" % abs(goal["to_goal_kg"]))
