@@ -310,7 +310,7 @@
     <span class="rl"><span>WT</span><b id="rail-wt">—</b></span>
     <span class="rl"><span>GOAL</span><b id="rail-goal">—</b></span>
     <span class="rl"><span>RATE</span><b id="rail-rate">—</b></span>
-    <span class="rl"><span>64 KG BY</span><b id="rail-eta">—</b></span>
+    <span class="rl"><span>ETA</span><b id="rail-eta">—</b></span>
     <span class="rl"><span>SETS/WK</span><b id="rail-sets">—</b></span>
     <span class="rl"><span>SESSIONS/WK</span><b id="rail-sess">—</b></span>
     <span class="rl"><span>LAST</span><b id="rail-last">—</b></span>
@@ -322,8 +322,7 @@
   <p class="band">Weight <em>primary</em></p>
   <div class="grid">
     <div class="card p">
-      <p class="card-h">Peak → goal
-        <span class="r">position is the y axis · pace is the slope · every mark gets a date</span></p>
+      <p class="card-h">Peak → goal <span class="r" id="burn-r">—</span></p>
       <div class="readout" id="ro-burn"></div>
       <div id="burn"></div>
     </div>
@@ -337,7 +336,7 @@
     <div class="card p3"><div class="kpi" id="kpi-rate"></div></div>
     <div class="card p3"><div class="kpi" id="kpi-eta"></div></div>
     <div class="card p12 p">
-      <p class="card-h">Full weigh-in history <span class="r" id="hist-r">—</span></p>
+      <p class="card-h">Weigh-in history <span class="r" id="hist-r">—</span></p>
       <div id="fig-history"></div>
     </div>
   </div>
@@ -355,8 +354,7 @@
     <div class="card p3"><div class="kpi" id="kpi-short"></div></div>
 
     <div class="card p" >
-      <p class="card-h">Weekly effective sets per muscle group
-        <span class="r">target 1.0, assist 0.5 · against each group's MEV · MAV · MRV</span></p>
+      <p class="card-h">Effective sets per group <span class="r">12 weeks · MEV · MAV · MRV</span></p>
       <div class="meters" id="meters"></div>
     </div>
 
@@ -371,8 +369,7 @@
     </div>
 
     <div class="card p flush">
-      <p class="card-h">How heavy each group's work is
-        <span class="r" id="int-r">—</span></p>
+      <p class="card-h">Load per set, by group <span class="r" id="int-r">—</span></p>
       <div id="intensity"></div>
     </div>
 
@@ -382,18 +379,17 @@
       <div id="sessions"></div>
     </div>
     <div class="card p4 flush">
-      <p class="card-h">Tonnage per session <span class="r">kg of external load</span></p>
+      <p class="card-h">Tonnage per session <span class="r">kg</span></p>
       <div id="session-tonnage"></div>
     </div>
 
     <div class="card p5">
-      <p class="card-h">Where the work landed · back, front
-        <span class="r" id="body-r">—</span></p>
+      <p class="card-h">Muscle map <span class="r" id="body-r">—</span></p>
       <div class="scale" id="scale-body"></div>
       <div id="body"></div>
     </div>
     <div class="card p7 fixed scroll">
-      <p class="card-h">Every group against its landmarks <span class="r">effective sets · last 6 weeks · ▲▼ is the move on the week before</span></p>
+      <p class="card-h">Landmarks <span class="r">6 weeks</span></p>
       <div class="legend" id="legend-targets"></div>
       <div id="fig-targets"></div>
     </div>
@@ -403,7 +399,7 @@
   <div class="grid">
     <div class="card p3"><div class="kpi" id="kpi-hold"></div></div>
     <div class="card p9 flush">
-      <p class="card-h">Delt heads <span class="r">sets per week · direct work and indirect stimulus</span></p>
+      <p class="card-h">Delt heads <span class="r">direct · indirect</span></p>
       <div class="legend" id="legend-delts"></div>
       <div id="delts"></div>
     </div>
@@ -430,37 +426,37 @@
       <details><summary>Sessions and sets by year</summary><div class="tbl-scroll" id="tbl-year"></div></details>
     </div>
     <div class="card p4 flush">
-      <p class="card-h">Sets per session, by year</p>
+      <p class="card-h">Sets / session</p>
       <div id="sps"></div>
     </div>
 
     <div class="card p6 flush">
-      <p class="card-h">Area share by year</p>
+      <p class="card-h">Area share</p>
       <div class="legend" id="leg-cat"></div>
       <div id="cats"></div>
       <details><summary>Category share by year (%)</summary><div class="tbl-scroll" id="tbl-cat"></div></details>
     </div>
     <div class="card p6 flush">
-      <p class="card-h">Rep-range share by year</p>
+      <p class="card-h">Rep ranges</p>
       <div class="legend" id="leg-rep"></div>
       <div id="reps"></div>
       <details><summary>Rep-range share by year (%)</summary><div class="tbl-scroll" id="tbl-rep"></div></details>
     </div>
 
     <div class="card p flush">
-      <p class="card-h">Estimated 1RM, full history
-        <span class="r">Epley · best set per day · 5-session rolling median</span></p>
+      <p class="card-h">Estimated 1RM
+        <span class="r">Epley · rolling median of 5</span></p>
       <div id="e1rm"></div>
     </div>
 
     <div class="card p6 flush">
-      <p class="card-h">Unweighted reps by movement</p>
+      <p class="card-h">Unweighted reps</p>
       <div class="legend" id="leg-bw"></div>
       <div id="bwm"></div>
       <details><summary>Unweighted reps by movement and year</summary><div class="tbl-scroll" id="tbl-bw"></div></details>
     </div>
     <div class="card p6 flush">
-      <p class="card-h">Share of sets with no external load</p>
+      <p class="card-h">Unloaded share <span class="r">% of sets</span></p>
       <div id="bwshare"></div>
     </div>
 
@@ -471,13 +467,13 @@
     </div>
 
     <div class="card p fixed scroll">
-      <p class="card-h">Start times <span class="r">IST · UTC + 5:30</span></p>
+      <p class="card-h">Start times <span class="r">IST</span></p>
       <div class="scale" id="scale-dow"></div>
       <div id="dow"></div>
     </div>
 
     <div class="card p">
-      <p class="card-h">What the numbers count</p>
+      <p class="card-h">Notes</p>
       <div class="notes" id="notes"></div>
     </div>
   </div>
@@ -548,6 +544,10 @@
   function longDate(iso) {
     var d = new Date(dnum(iso));
     return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear();
+  }
+  function shortYear(iso) {
+    var d = new Date(dnum(iso));
+    return MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear();
   }
   function shortDate(iso) {
     var d = new Date(dnum(iso));
@@ -1289,7 +1289,7 @@
     });
     s.appendChild(el("line", { x1: L, x2: W - R, y1: T + ph, y2: T + ph, class: "baseline" }));
     s.appendChild(el("text", { x: L, y: 10, class: "axlab" },
-      "Effective sets · one bar per programme week · shaded band is MAV, dashed is MRV"));
+      "Effective sets · MAV shaded · MRV dashed"));
     s.appendChild(el("text", { x: L, y: H - 6, class: "tick" },
       "week " + weeks[0].week + " → week " + weeks[weeks.length - 1].week));
   }
@@ -1361,8 +1361,7 @@
         class: "baseline" }));
       s.appendChild(g0);
     });
-    txt("int-r", "kg × reps per loaded set · week of " + shortDate(w.weeks[anchor]) +
-        " · a group with no direct work is read through the compounds that assist it");
+    txt("int-r", "week of " + shortDate(w.weeks[anchor]));
   }
 
   /* Stacked weekly sets by area — six validated hues, 2px gap between segments. */
@@ -1423,8 +1422,7 @@
     var last = anchorIdx - from;
     var tot = AREAS.reduce(function (a, k) { return a + data[k][last]; }, 0);
     var prev = AREAS.reduce(function (a, k) { return a + data[k][last - 1]; }, 0);
-    txt("vol-r", fmtSet(tot) + " effective sets this week · " +
-        delta(Math.round((tot - prev) * 10) / 10));
+    txt("vol-r", fmtSet(tot) + " sets · " + delta(Math.round((tot - prev) * 10) / 10));
   }
 
   /* Tonnage on its own says little — a week of many easy sets and a week of
@@ -1444,7 +1442,7 @@
     s.setAttribute("aria-label", "Load carried per working set, by week");
     var ax = niceAxis(Math.max.apply(null, series) || 1, 4);
     yAxis(s, L, R, W, T, ph, ax.ticks, ax.top, function (v) { return fmt(v); });
-    s.appendChild(el("text", { x: 0, y: 9, class: "axlab" }, "kg × reps per loaded set"));
+    s.appendChild(el("text", { x: 0, y: 9, class: "axlab" }, "kg × reps / loaded set"));
 
     var slot = pw / weeks.length, bw = Math.max(slot - 3, 2);
     var trained = [];
@@ -1528,8 +1526,7 @@
     s.appendChild(el("line", { x1: L, x2: W - R, y1: T + ph, y2: T + ph, class: "baseline" }));
     var last6 = recent.slice(-6).map(function (r) { return r.sets; });
     var mean = last6.reduce(function (a, b) { return a + b; }, 0) / last6.length;
-    txt("sess-r", "last session " + recent[recent.length - 1].sets + " sets · mean of 6 " +
-        fmt1(mean));
+    txt("sess-r", recent[recent.length - 1].sets + " last · " + fmt1(mean) + " mean of 6");
   }
 
   function sessionTonnage(recent) {
@@ -1681,7 +1678,7 @@
     var top = Object.keys(byPart).sort(function (a, b2) {
       return byPart[b2].v - byPart[a].v;
     })[0];
-    txt("body-r", "hardest worked: " + top.replace(/-/g, " ") + " · " + fmtSet(max) + " sets");
+    txt("body-r", top.replace(/-/g, " ") + " " + fmtSet(max));
   }
 
   /* ============================================================ STRENGTH */
@@ -1748,8 +1745,7 @@
 
       var box = document.getElementById("lifts-" + p.key);
       if (!p.lifts.length) {
-        box.innerHTML = '<p class="none">no lift here has enough loaded sessions in ' +
-          'both windows to compare</p>';
+        box.innerHTML = '<p class="none">no comparable loaded sessions</p>';
         return;
       }
       p.lifts.forEach(function (l) {
@@ -2076,7 +2072,7 @@
       s.appendChild(el("text", { x: W - 2, y: yy + 11, class: "tick", "text-anchor": "end" },
         fmt(d.sets)));
     });
-    txt("life-r", live + " of " + rows.length + " active in the last 12 months");
+    txt("life-r", live + " / " + rows.length + " active · 12 mo");
   }
 
   function dowHeat(m) {
@@ -2200,7 +2196,7 @@
       var tot = function (x) {
         return GROUPS.reduce(function (a, g) { return a + x.sets[g]; }, 0);
       };
-      txt("block-r", b.program + " · started " + longDate(b.started));
+      txt("block-r", b.program + " · from " + shortDate(b.started));
       readout("ro-block", [
         { k: "Week", v: b.current_week },
         { k: "Day", v: b.current_day + " of " + b.days_per_week },
@@ -2253,8 +2249,8 @@
 
     draw("cal", function () {
       calendar(D.calendar);
-      txt("cal-r", D.facts.weeks_trained + " of " + D.facts.weeks_total + " weeks · " +
-          D.facts.layoff_count + " gaps over 21 days");
+      txt("cal-r", D.facts.weeks_trained + " / " + D.facts.weeks_total + " · " +
+          D.facts.layoff_count + " gaps > 21 d");
       table("tbl-layoff", ["Last session", "Returned", "Days away"],
         D.layoffs.map(function (l) {
           return [longDate(l.from), longDate(l.to), l.days];
@@ -2271,10 +2267,10 @@
         }));
     });
     draw("sps", function () {
-      yearCols("sps", D.years, "spy", "Sets per session by year", fmt1);
+      yearCols("sps", D.years, "spy", "Sets / session", fmt1);
     });
     draw("bwshare", function () {
-      yearCols("bwshare", D.years, "bw_share", "Unloaded share of sets by year", fmt);
+      yearCols("bwshare", D.years, "bw_share", "Unloaded %", fmt);
     });
     draw("cats", function () {
       var c = D.categories;
@@ -2306,8 +2302,8 @@
       weightChart("fig-history", D.weight, { width: 1220, height: 240, marks: true,
         label: "Body weight, full history", band: { low: D.goal.low, high: D.goal.high },
         milestones: D.milestones, smoothDays: 21 });
-      txt("hist-r", longDate(D.weight[0].d) + " → " +
-          longDate(D.weight[D.weight.length - 1].d) + " · " + D.weight.length + " days");
+      txt("hist-r", shortYear(D.weight[0].d) + " → " +
+          shortYear(D.weight[D.weight.length - 1].d) + " · " + D.weight.length + " days");
     });
 
     loadJSON("stats.json").then(function (st) {
@@ -2315,6 +2311,8 @@
       draw("burn", function () { burndown(D.goal, D.milestones, D.weight, st); });
       var next = D.milestones.filter(function (m) { return !m.hit; })[0];
       var toNext = next ? D.goal.smooth_kg - next.kg : null;
+      txt("burn-r", fmt1(D.goal.peak_kg) + " → " + fmt1(D.goal.high) + " kg · " +
+          shortDate(D.goal.peak_date) + " → " + shortDate(D.goal.latest_date));
       readout("ro-burn", [
         { k: "Now", v: fmt1(D.goal.smooth_kg) + " kg" },
         { k: "Off the peak", v: fmt1(D.goal.lost_kg) + " kg" },
@@ -2369,8 +2367,8 @@
       txt("rail-eta", D.goal.reached ? "reached"
           : etaPace ? dateLabel(etaPace) : "—");
 
-      txt("cut-r", "from " + longDate(st.dense_start) + " · " + dense.readings +
-          " readings · " + (settled ? "trend settled" : "settles in " + settles + " days"));
+      txt("cut-r", shortDate(st.dense_start) + " → · " + dense.readings + " readings · " +
+          (settled ? "settled" : "settles " + settles + " d"));
       draw("fig-cut", function () {
         if (cut.length < 2) throw new Error("dense window too short");
         weightChart("fig-cut", cut, {

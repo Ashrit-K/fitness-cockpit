@@ -68,25 +68,25 @@ PATTERNS = [
     {
         "key": "incline_press",
         "label": "Incline / chest press",
-        "note": "e1RM per lift, and pressing volume",
+        "note": "incline · bench · machine · push up",
         "names": INCLINE_PRESS,
     },
     {
         "key": "vertical_pull",
         "label": "Vertical pull",
-        "note": "pull ups, chin ups, neutral grip, pulldowns",
+        "note": "pull up · chin up · neutral · pulldown",
         "names": VERTICAL_PULL,
     },
     {
         "key": "row",
         "label": "Rowing",
-        "note": "incline row and machine rows",
+        "note": "incline row · machine row",
         "names": ROW,
     },
     {
         "key": "delt_lateral",
         "label": "Lateral delts",
-        "note": "the head being pushed — volume is the driver, not load",
+        "note": "lateral raise · upright row",
         "names": DELT_LATERAL,
     },
 ]
