@@ -542,3 +542,40 @@ def test_the_goal_gap_is_measured_from_the_estimate():
     assert g["smooth_kg"] == est
     assert g["latest_kg"] == 70.0            # the reading is still reported
     assert g["to_goal_kg"] == round(est - report.GOAL_KG, 1)
+
+
+# --------------------------------------------------------------- block clock
+
+def _block(date, week, day, body="  Bench Press / 3x8 60kg"):
+    return {"id": date, "text": (
+        f'{date} 09:00:00 +00:00 / program: "P4" / dayName: "D{day}" / week: {week} '
+        f"/ dayInWeek: {day} / duration: 3600s / exercises: {{\n{body}\n}}")}
+
+
+def test_a_finished_week_puts_the_next_one_on_the_chart_empty():
+    recs = [_block("2026-08-%02d" % (4 + i), 1, i + 1) for i in range(4)]
+    b = report.mesocycle(sessions(*recs), {}, MAP)
+    assert [w["week"] for w in b["weeks"]] == [1, 2]
+    assert b["weeks"][0]["status"] == "complete"
+    assert b["weeks"][1]["status"] == "not started"
+    assert b["weeks"][1]["performed"] == 0
+    assert b["current_week"] == 2 and b["current_day"] == 0
+
+
+def test_a_week_in_progress_is_the_current_one_and_no_ghost_is_added():
+    recs = [_block("2026-08-%02d" % (4 + i), 1, i + 1) for i in range(4)]
+    recs += [_block("2026-08-11", 2, 1), _block("2026-08-12", 2, 2)]
+    b = report.mesocycle(sessions(*recs), {}, MAP)
+    assert [w["week"] for w in b["weeks"]] == [1, 2]
+    assert b["weeks"][1]["status"] == "in progress"
+    assert b["current_week"] == 2 and b["current_day"] == 2
+
+
+def test_weekly_reports_the_current_week_and_how_far_into_it_we_are():
+    s = sessions(rec("2026-01-05 09:00:00", "  Bench Press / 3x8 60kg"))
+    w = report.weekly_volume(s, {}, MAP, weeks=2,
+                             now=report.datetime(2026, 1, 14).date())
+    assert w["current"] == 1                 # the calendar week in progress
+    assert w["days_done"] == 0               # nothing logged in it yet
+    assert w["latest"] == 0                  # the week that does hold work
+    assert w["current_week_empty"] is True

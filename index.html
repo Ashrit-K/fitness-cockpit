@@ -572,8 +572,9 @@
   /* Volume reads against that group's own landmarks — MEV, MAV, MRV — not one
      band for every muscle. Under MEV is the only shortfall worth flagging;
      everything above it deepens in green rather than turning into an alarm. */
-  function bandState(v, g) {
+  function bandState(v, g, partial) {
     var lm = LM[g];
+    if (partial) return v > 0 ? "so far" : "not started";
     if (v <= 0) return "not trained";
     if (!lm) return "logged";
     if (v < lm.mev) return "under MEV";
@@ -582,8 +583,10 @@
     if (v <= lm.mrv) return "near MRV";
     return "over MRV";
   }
-  function bandColor(v, g) {
-    var st = bandState(v, g);
+  function bandColor(v, g, partial) {
+    var st = bandState(v, g, partial);
+    if (st === "so far") return "var(--series-1)";
+    if (st === "not started") return "var(--grid)";
     return st === "not trained" ? "var(--muted)"
       : st === "under MEV" ? "var(--warn)"
       : st === "near MRV" ? "var(--good-2)"
@@ -1152,7 +1155,7 @@
 
   /* One instrument per muscle group: the week's sets, the move on last week,
      a 12-week trace, and the 10–20 band drawn as a track. */
-  function meterCard(g, weeks, values, key, direct, indirect) {
+  function meterCard(g, weeks, values, key, direct, indirect, partial, prevVal) {
     var box = document.createElement("div");
     box.className = "meter" + (key ? " key" : "");
     var W = 240, H = 98;
@@ -1162,14 +1165,15 @@
     var lm = LM[g] || { mev: 10, mav_low: 12, mav_high: 20, mrv: 22 };
     var now = values[values.length - 1];
     var was = values.length > 1 ? values[values.length - 2] : 0;
-    var col = bandColor(now, g);
+    var col = bandColor(now, g, partial);
     s.appendChild(el("text", { x: 2, y: 11, class: "axlab" }, g));
     s.appendChild(el("text", { x: W - 2, y: 15, class: "big", style: "fill:" + (col), "text-anchor": "end",
                                }, fmtSet(now)));
     var allIndirect = direct[direct.length - 1] === 0 && now > 0;
     s.appendChild(el("text", { x: W - 2, y: 29, class: "tick", "text-anchor": "end" },
-      delta(now - was) + " · " + bandState(now, g) +
-      (allIndirect ? " · all indirect" : "")));
+      partial ? bandState(now, g, true) + " · last wk " + fmtSet(prevVal)
+              : delta(now - was) + " · " + bandState(now, g) +
+                (allIndirect ? " · all indirect" : "")));
 
     /* 12-week trace */
     var sTop = 36, sH = 30;
@@ -1185,9 +1189,10 @@
         x: 2 + slot * i + (slot - bw) / 2, y: sTop + sH - h,
         width: bw, height: Math.max(h, 1.5), rx: 1.5,
         fill: v === 0 ? "var(--grid)" : last ? col : "var(--series-1)",
-        "fill-opacity": v === 0 ? 1 : last ? 1 : 0.42
+        "fill-opacity": v === 0 ? 1 : last ? (partial ? 0.55 : 1) : 0.42
       }), tk(g + " · week of " + shortDate(weeks[i])) +
-         tv("<b>" + fmtSet(v) + " effective sets</b> · " + bandState(v, g) +
+         tv("<b>" + fmtSet(v) + " effective sets</b> · " +
+            bandState(v, g, last && partial) +
             "<br>" + direct[i] + " direct + " + indirect[i] +
             " assisting at half credit")));
     });
@@ -1219,7 +1224,7 @@
     return box;
   }
 
-  function meters(w, vt, nWeeks, anchor) {
+  function meters(w, vt, nWeeks, anchor, partial, prevIdx) {
     var host = document.getElementById("meters");
     host.innerHTML = "";
     var weeks = upTo(w.weeks, nWeeks, anchor);
@@ -1228,7 +1233,8 @@
       host.appendChild(meterCard(g, weeks, upTo(w.sets[g], nWeeks, anchor),
                                  vt.indexOf(g) >= 0,
                                  upTo(w.direct[g], nWeeks, anchor),
-                                 upTo(w.indirect[g], nWeeks, anchor)));
+                                 upTo(w.indirect[g], nWeeks, anchor),
+                                 partial, w.sets[g][prevIdx] || 0));
     });
   }
 
@@ -1270,17 +1276,24 @@
       }
       weeks.forEach(function (wk, wi) {
         var v = wk.sets[g], h = v / ax.top * ph;
-        var partial = wk.week === b.current_week && b.current_day < b.days_per_week;
+        var open = wk.status !== "complete";
         var x = x0 + (slot - bw * weeks.length) / 2 + bw * wi;
+        if (wk.status === "not started") {
+          /* the week you are about to train, waiting rather than absent */
+          s.appendChild(tipOn(el("rect", {
+            x: x + 1, y: T, width: bw - 2, height: ph, rx: 1.5, fill: "none",
+            stroke: "var(--edge)", "stroke-width": 1, "stroke-dasharray": "2 3"
+          }), tk(g + " · week " + wk.week) + tv("<b>not started</b>")));
+          return;
+        }
         s.appendChild(tipOn(el("rect", {
           x: x + 1, y: T + ph - h, width: bw - 2, height: Math.max(h, 1), rx: 1.5,
-          fill: bandColor(v, g), "fill-opacity": partial ? 0.55 : 1
+          fill: bandColor(v, g, open), "fill-opacity": open ? 0.55 : 1
         }), tk(g + " · week " + wk.week) +
-           tv("<b>" + fmtSet(v) + " effective sets</b> · " + bandState(v, g) +
+           tv("<b>" + fmtSet(v) + " effective sets</b> · " + bandState(v, g, open) +
               "<br>" + wk.direct[g] + " direct + " +
               Math.round((v - wk.direct[g]) * 2) + " assisting" +
-              (partial ? "<br>week in progress · day " + b.current_day + " of " +
-                         b.days_per_week : "") +
+              (open ? "<br>day " + wk.days.length + " of " + b.days_per_week : "") +
               (lm ? "<br>MEV " + lm.mev + " · MAV " + lm.mav_low + "–" + lm.mav_high +
                     " · MRV " + lm.mrv : ""))));
       });
@@ -1551,7 +1564,7 @@
     s.appendChild(el("line", { x1: L, x2: W - R, y1: T + ph, y2: T + ph, class: "baseline" }));
   }
 
-  function targetHeat(w, nWeeks, anchor) {
+  function targetHeat(w, nWeeks, anchor, partial) {
     var weeks = upTo(w.weeks, nWeeks, anchor);
     legend("legend-targets", [
       { l: "under MEV", c: "var(--warn)" },
@@ -1575,12 +1588,13 @@
       s.appendChild(el("text", { x: LABEL - 10, y: HEAD + CH * r + CH / 2 + 4,
                                  class: "axlab", "text-anchor": "end" }, g));
       series.forEach(function (v, c) {
-        var none = v === 0;
+        var none = v === 0, isNow = c === series.length - 1;
         var x = LABEL + CW * c, y = HEAD + CH * r;
         var move = c > 0 ? v - series[c - 1] : 0;
         s.appendChild(el("rect", {
           x: x + 1, y: y + 1, width: CW - 2, height: CH - 2, rx: 3,
-          fill: none ? "var(--grid)" : bandColor(v, g), "fill-opacity": none ? 1 : 0.9
+          fill: none ? "var(--grid)" : bandColor(v, g, isNow && partial),
+          "fill-opacity": none ? 1 : (isNow && partial ? 0.6 : 0.9)
         }));
         s.appendChild(el("text", {
           x: x + CW / 2 - (c > 0 ? 6 : 0), y: y + CH / 2 + 4, class: "dlab",
@@ -1595,7 +1609,8 @@
         }
         s.appendChild(tipOn(el("rect", { x: x, y: y, width: CW, height: CH, class: "hit" }),
           tk(g + " · week of " + shortDate(weeks[c])) +
-          tv("<b>" + fmtSet(v) + " effective sets</b> · " + bandState(v, g) +
+          tv("<b>" + fmtSet(v) + " effective sets</b> · " +
+             bandState(v, g, isNow && partial) +
              "<br>" + dir[c] + " direct + " + ind[c] + " assisting" +
              (c > 0 ? "<br>" + delta(move) + " on last week" : ""))));
       });
@@ -2147,10 +2162,14 @@
   loadJSON("report.json").then(function (D) {
     LM = D.landmarks || {};
     var w = D.weekly;
-    /* the last week that holds training — on a Monday the calendar week is
-       still empty and every reading off it would be a useless zero */
-    var last = w.latest === undefined ? w.weeks.length - 1 : w.latest;
-    var setsNow = w.performed[last], setsPrev = w.performed[last - 1];
+    /* The week you are in, filling as it goes — an empty Monday is a real
+       state, not a fault. PREV is the last week that actually holds work, so
+       every reading has something to be compared against. */
+    var last = w.current === undefined ? w.weeks.length - 1 : w.current;
+    var prev = w.latest === undefined ? last - 1 : (w.latest === last ? last - 1 : w.latest);
+    var done = w.days_done || 0, expect = w.days_expected || 0;
+    var partial = expect > 0 && done < expect;
+    var setsNow = w.performed[last], setsPrev = w.performed[prev];
 
     txt("rail-wt", D.goal.smooth_kg ? fmt1(D.goal.smooth_kg) + " kg" : "—");
     txt("rail-goal", fmt1(D.goal.high) + " kg");
@@ -2164,28 +2183,36 @@
     });
 
     /* volume tiles */
+    /* mid-week a group is not behind, it is unfinished — judge the last week
+       that actually completed and say so */
+    var judge = partial ? prev : last;
     var atTarget = GROUPS.filter(function (g) {
-      var st = bandState(w.sets[g][last], g);
+      var st = bandState(w.sets[g][judge], g);
       return st === "in MAV" || st === "near MRV";
     });
     var short = D.vtaper.filter(function (g) {
-      var st = bandState(w.sets[g][last], g);
+      var st = bandState(w.sets[g][judge], g);
       return st === "under MEV" || st === "not trained";
     });
+    var judgeLabel = partial ? "week of " + shortDate(w.weeks[judge]) : "this week";
     var spy = D.recent.length
       ? D.recent.reduce(function (a, s) { return a + s.sets; }, 0) / D.recent.length : 0;
     kpi("kpi-sets", { k: "Sets performed", v: setsNow,
-      c: setsNow >= setsPrev ? "good" : null,
-      n: delta(setsNow - setsPrev) + " on last week · " + fmt1(spy) + " per session" });
-    kpi("kpi-sessions", { k: "Sessions this week", v: w.sessions[last],
-      n: "week of " + shortDate(w.weeks[last]) });
+      c: partial ? null : setsNow >= setsPrev ? "good" : null,
+      n: partial ? "week of " + shortDate(w.weeks[last]) + " · day " + done + " of " +
+                   expect + " · last week " + setsPrev
+                 : delta(setsNow - setsPrev) + " on last week · " +
+                   fmt1(spy) + " per session" });
+    kpi("kpi-sessions", { k: "Sessions", v: w.sessions[last] + (expect ? " / " + expect : ""),
+      n: "week of " + shortDate(w.weeks[last]) +
+         (partial ? " · in progress" : " · complete") });
     kpi("kpi-band", { k: "Groups in MAV", v: atTarget.length, u: "/ " + GROUPS.length,
       c: atTarget.length >= 6 ? "good" : atTarget.length >= 3 ? "warn" : null,
-      n: atTarget.length ? atTarget.join(", ") : "no group inside its MAV yet" });
+      n: (atTarget.length ? atTarget.join(", ") : "none inside MAV") +
+         " · " + judgeLabel });
     kpi("kpi-short", { k: "V-taper short", v: short.length ? short.join(", ") : "none",
       c: short.length ? "bad" : "good",
-      n: short.length ? "under MEV this week"
-         : "back, shoulders and chest all at or over MEV" });
+      n: (short.length ? "under MEV" : "all at or over MEV") + " · " + judgeLabel });
 
     draw("block", function () {
       var b = D.block;
@@ -2196,21 +2223,23 @@
       var tot = function (x) {
         return GROUPS.reduce(function (a, g) { return a + x.sets[g]; }, 0);
       };
-      txt("block-r", b.program + " · from " + shortDate(b.started));
+      txt("block-r", b.program + " · from " + shortDate(b.started) +
+          " · last trained " + shortDate(b.last_trained));
       readout("ro-block", [
         { k: "Week", v: b.current_week },
         { k: "Day", v: b.current_day + " of " + b.days_per_week },
         { k: "Sets performed", v: wk.performed },
         { k: "Effective sets", v: fmtSet(tot(wk)) },
         { k: "Last week", v: prev ? fmtSet(tot(prev)) : "—" },
-        { k: "Ramp", v: prev
-            ? delta(Math.round((tot(wk) - tot(prev)) * 10) / 10) +
-              (b.current_day < b.days_per_week ? " so far" : "")
-            : "first week",
-          c: prev && tot(wk) >= tot(prev) ? "down" : null }
+        { k: "Ramp", v: !prev ? "first week"
+            : wk.status === "not started" ? "—"
+            : delta(Math.round((tot(wk) - tot(prev)) * 10) / 10) +
+              (wk.status === "complete" ? "" : " so far"),
+          c: prev && wk.status !== "not started" && tot(wk) >= tot(prev) ? "down" : null },
+        { k: "Status", v: wk.status }
       ]);
     });
-    draw("meters", function () { meters(w, D.vtaper, 12, last); });
+    draw("meters", function () { meters(w, D.vtaper, 12, last, partial, prev); });
     draw("fig-sets", function () { areaStack(w, 26, last); });
     draw("fig-tonnage", function () { loadPerSet(w, 26, last); });
     draw("intensity", function () { intensityPanels(w, 12, last); });
@@ -2219,7 +2248,7 @@
       sessionSets(D.recent);
     });
     draw("session-tonnage", function () { sessionTonnage(D.recent); });
-    draw("fig-targets", function () { targetHeat(w, 6, last); });
+    draw("fig-targets", function () { targetHeat(w, 6, last, partial); });
     loadJSON("data/body_muscles.json").then(function (shapes) {
       draw("body", function () { bodyFigure(shapes, D.bodyMap); });
     }).catch(function () { unavailable("body"); });

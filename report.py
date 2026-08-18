@@ -560,11 +560,14 @@ def weekly_volume(sessions, customs, builtins, weeks=26, now=None):
     latest = len(starts) - 1
     while latest > 0 and performed[latest] == 0:
         latest -= 1
+    current = len(starts) - 1
 
     return {
         "weeks": [w.isoformat() for w in starts],
-        "latest": latest,
-        "current_week_empty": performed[len(starts) - 1] == 0,
+        "latest": latest,          # last week holding work
+        "current": current,        # the calendar week in progress
+        "days_done": len(days[current]),
+        "current_week_empty": performed[current] == 0,
         "sets": {g: [round(v, 1) for v in sets[g]] for g in BROAD_GROUPS},
         "direct": direct,
         "indirect": indirect,
@@ -657,13 +660,30 @@ def mesocycle(sessions, customs, builtins):
         w["days"].sort(key=lambda d: d["d"])
         out.append(w)
     days_per_week = max((len(w["days"]) for w in out), default=0)
+
+    # A block runs forward whether or not it has been logged yet. Once a week is
+    # complete the next one is what you are about to train, so it belongs on the
+    # chart as an empty column rather than appearing only after the first set.
+    for w in out:
+        w["status"] = ("complete" if len(w["days"]) >= days_per_week
+                       else "in progress" if w["days"] else "not started")
     last = out[-1]
+    if last["status"] == "complete":
+        out.append({
+            "week": last["week"] + 1, "days": [], "performed": 0,
+            "sets": {g: 0.0 for g in BROAD_GROUPS},
+            "direct": {g: 0 for g in BROAD_GROUPS},
+            "status": "not started",
+        })
+    current = out[-1]
     return {
         "program": program,
         "started": block[0]["date"].isoformat(),
         "days_per_week": days_per_week,
-        "current_week": last["week"],
-        "current_day": len(last["days"]),
+        "current_week": current["week"],
+        "current_day": len(current["days"]),
+        "current_status": current["status"],
+        "last_trained": block[-1]["date"].isoformat(),
         "weeks": out,
     }
 
@@ -1061,6 +1081,8 @@ def build(records, weights, customs, builtins, now=None):
                         e1rm, bw, life, dow)
     facts.update(goal_facts(goal))
     facts.update(milestone_facts(marks, series))
+    if block:
+        vol["days_expected"] = block["days_per_week"]
     facts.update(volume_facts(vol, recent, watch))
 
     return {
