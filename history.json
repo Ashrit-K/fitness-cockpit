@@ -1,6 +1,10 @@
 {
   "records": [
     {
+      "id": 1787389436931,
+      "text": "2026-08-22 09:03:56 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 3 - Day 3 \u2014 H Pull + H Press\" / week: 3 / dayInWeek: 3 / duration: 4064s / exercises: {\n  Seated Row, Leverage Machine / 1x9 60kg, 3x12 50kg / warmup: 2x12 50kg / target: 4x8-12 30kg @8 120s\n  Incline Bench Press / 1x7 45kg, 1x10 45kg, 1x7 50kg, 1x8 45kg / warmup: 1x12 25kg, 1x12 35kg / target: 4x8-12 47.5kg @8 120s\n  Lateral Raise / 1x14 7.5kg, 3x9 7.5kg / target: 4x12-16 6kg @8 75s\n  Lat Pulldown Pronated Wide / 2x8 25kg / warmup: 1x10 21.25kg, 1x12 21.25kg / target: 2x8-12 47.5kg @8 90s\n  Deficit Push Up / 3x12 0kg / target: 3x8-12+ 0kg 90s\n  Triceps Dip / 1x9 0kg, 1x8 0kg, 1x7 0kg / target: 3x9 0kg\n  Bird Dog / 2x1 0kg / target: 2x1 0kg 45s\n}"
+    },
+    {
       "id": 1787125131501,
       "text": "2026-08-19 07:38:51 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 3 - Day 2 \u2014 H Pull + V Press\" / week: 3 / dayInWeek: 2 / duration: 4115s / exercises: {\n  Lat Pulldown Pronated Wide / 3x12 45kg / warmup: 1x12 47.5kg, 1x7 45kg / target: 3x8-12 45kg @8 120s\n  Shoulder Press, Leverage Machine / 1x12 30kg, 2x10 30kg / warmup: 1x11 20kg, 1x12 22.5kg / target: 3x8-12 30kg @8 120s\n  Incline Row / 1x12 14kg, 1x13 14kg, 2x12 14kg / target: 4x8-12 14kg @8 90s\n  Bench Dip / 1x20 0kg, 2x12 10kg / target: 3x8-12 0kg @8 90s\n  Diamond Push Up / 1x9 0kg, 1x10 0kg, 1x6 0kg / target: 2x9+ 0kg\n  Lateral Raise, Cable / 1x14 6kg, 1x12 6kg, 1x11 6kg @10, 1x9 5kg @10 / target: 4x12-16 5kg @10+ 75s\n  // Getting the right position key!\n  Seated Leg Curl / 1x15 10kg, 2x12 15kg / target: 3x12-16 15kg @8 30s\n  Dead Bug / 2x4 0kg / target: 2x4 0kg 15s\n}"
     },
