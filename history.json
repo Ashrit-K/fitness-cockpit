@@ -1,6 +1,10 @@
 {
   "records": [
     {
+      "id": 1787809407393,
+      "text": "2026-08-27 05:43:27 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 3 - Day 4 \u2014 V Pull + V Press\" / week: 3 / dayInWeek: 4 / duration: 4695s / exercises: {\n  Pull Up / 3x8 0kg, 1x6 0kg / target: 4x8-12 0kg @8 120s\n  Shoulder Press, Leverage Machine / 1x12 25kg, 1x9 32kg, 1x8 32kg, 1x7 32kg / warmup: 1x12 15kg, 1x12 20kg / target: 4x8-12 30kg @8 120s\n  Lateral Raise, Cable / 1x12 5kg, 1x8 5kg, 2x14 2.5kg, 1x16 2.5kg / target: 5x12-16 5kg @8 75s\n  // Change in gym and machine; hence the drop in load\n  Lat Pulldown Pronated Wide / 2x8 25kg / warmup: 1x12 21.25kg, 1x8 25kg / target: 2x8-12 47.5kg @8 90s\n  Lying Leg Curl / 1x12 15kg, 1x14 15kg, 1x10 20kg / warmup: 1x12 15kg / target: 3x12-16 13kg @8 75s\n  Triceps Dip / 1x12 0kg, 1x12 2.5kg, 1x12 5kg / target: 3x8-12 0kg @8 90s\n  Side Plank / 2x1|1 0kg / target: 2x1 45s\n  Incline Walking / 1x1 0kg / target: 1x1 0kg\n}"
+    },
+    {
       "id": 1787389436931,
       "text": "2026-08-22 09:03:56 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 3 - Day 3 \u2014 H Pull + H Press\" / week: 3 / dayInWeek: 3 / duration: 4064s / exercises: {\n  Seated Row, Leverage Machine / 1x9 60kg, 3x12 50kg / warmup: 2x12 50kg / target: 4x8-12 30kg @8 120s\n  Incline Bench Press / 1x7 45kg, 1x10 45kg, 1x7 50kg, 1x8 45kg / warmup: 1x12 25kg, 1x12 35kg / target: 4x8-12 47.5kg @8 120s\n  Lateral Raise / 1x14 7.5kg, 3x9 7.5kg / target: 4x12-16 6kg @8 75s\n  Lat Pulldown Pronated Wide / 2x8 25kg / warmup: 1x10 21.25kg, 1x12 21.25kg / target: 2x8-12 47.5kg @8 90s\n  Deficit Push Up / 3x12 0kg / target: 3x8-12+ 0kg 90s\n  Triceps Dip / 1x9 0kg, 1x8 0kg, 1x7 0kg / target: 3x9 0kg\n  Bird Dog / 2x1 0kg / target: 2x1 0kg 45s\n}"
     },
