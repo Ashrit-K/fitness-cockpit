@@ -579,3 +579,131 @@ def test_weekly_reports_the_current_week_and_how_far_into_it_we_are():
     assert w["days_done"] == 0               # nothing logged in it yet
     assert w["latest"] == 0                  # the week that does hold work
     assert w["current_week_empty"] is True
+
+
+# --------------------------------------------------------------- tape
+
+def meas(key, *pairs):
+    """measurements.json shape: key -> [{date, value}] with a unit suffix."""
+    return {"keys": {key: [{"date": d + "T04:00:00.000Z", "value": v}
+                           for d, v in pairs]}}
+
+
+def test_length_units_convert():
+    from lifto_parse import parse_length
+    assert parse_length("34in") == pytest.approx(86.36)
+    assert parse_length("86.36cm") == pytest.approx(86.36)
+    assert parse_length("34") == pytest.approx(34.0)
+
+
+def test_tape_row_reports_change_against_previous():
+    m = report.measurements(meas("waist", ("2026-08-22", "34.25in"),
+                                 ("2026-08-29", "34in")))
+    row = m["rows"][0]
+    assert row["label"] == "Waist"
+    assert row["in"] == 34.0
+    assert row["change_in"] == -0.25
+    assert row["days"] == 7
+
+
+def test_change_inside_tape_noise_is_flat():
+    m = report.measurements(meas("waist", ("2026-08-22", "34.1in"),
+                                 ("2026-08-29", "34in")))
+    assert m["rows"][0]["flat"] is True
+
+
+def test_first_reading_has_no_change():
+    m = report.measurements(meas("waist", ("2026-08-29", "34in")))
+    row = m["rows"][0]
+    assert row["n"] == 1
+    assert "change_in" not in row
+
+
+def test_same_day_reading_replaces_earlier_one():
+    values = {"keys": {"waist": [
+        {"date": "2026-08-29T04:00:00.000Z", "value": "34.5in"},
+        {"date": "2026-08-29T04:05:00.000Z", "value": "34in"},
+    ]}}
+    m = report.measurements(values)
+    assert m["rows"][0]["in"] == 34.0
+    assert m["rows"][0]["n"] == 1
+
+
+def sites(day, **cm_or_in):
+    return {"keys": {k: [{"date": day + "T04:00:00.000Z", "value": v}]
+                     for k, v in cm_or_in.items()}}
+
+
+def by_key(rows):
+    return {r["key"]: r for r in rows}
+
+
+def test_ratio_is_unitless():
+    imperial = report.measurements(
+        sites("2026-08-29", shoulders="45in", waist="34in"))["ratios"]
+    metric = report.measurements(
+        sites("2026-08-29", shoulders="114.3cm", waist="86.36cm"))["ratios"]
+    assert by_key(imperial)["shoulder_waist"]["latest"] == pytest.approx(1.324, abs=1e-3)
+    # the same body in centimetres has to give the same number
+    assert (by_key(metric)["shoulder_waist"]["latest"]
+            == pytest.approx(by_key(imperial)["shoulder_waist"]["latest"], abs=1e-3))
+
+
+def test_ratio_needs_both_of_its_sites():
+    only_waist = report.measurements(meas("waist", ("2026-08-29", "34in")))
+    assert only_waist["ratios"] == []
+
+
+def test_all_four_ratios_derive_from_four_sites():
+    m = report.measurements(sites("2026-08-29", shoulders="45in", chest="38in",
+                                  waist="34in", hips="37in"))
+    got = by_key(m["ratios"])
+    assert set(got) == {"shoulder_waist", "chest_waist", "shoulder_chest", "waist_hip"}
+    assert got["waist_hip"]["latest"] == pytest.approx(34 / 37, abs=1e-3)
+    assert got["waist_hip"]["good"] == "down"
+    assert got["shoulder_chest"]["target"] is None
+
+
+def test_ratio_improving_follows_its_own_direction():
+    """Waist-to-hip improves going down; shoulder-to-waist improves going up."""
+    keys = {"keys": {
+        "shoulders": [{"date": "2026-08-22T04:00:00.000Z", "value": "44in"},
+                      {"date": "2026-08-29T04:00:00.000Z", "value": "45in"}],
+        "waist": [{"date": "2026-08-22T04:00:00.000Z", "value": "36in"},
+                  {"date": "2026-08-29T04:00:00.000Z", "value": "34in"}],
+        "hips": [{"date": "2026-08-22T04:00:00.000Z", "value": "37in"},
+                 {"date": "2026-08-29T04:00:00.000Z", "value": "37in"}],
+    }}
+    got = by_key(report.measurements(keys)["ratios"])
+    assert got["shoulder_waist"]["change"] > 0
+    assert got["shoulder_waist"]["improving"] is True
+    assert got["waist_hip"]["change"] < 0
+    assert got["waist_hip"]["improving"] is True
+
+
+def test_ratio_move_inside_inherited_noise_is_flat():
+    """A quarter inch on the waist alone must not read as a shape change."""
+    keys = {"keys": {
+        "shoulders": [{"date": "2026-08-22T04:00:00.000Z", "value": "45in"},
+                      {"date": "2026-08-29T04:00:00.000Z", "value": "45in"}],
+        "waist": [{"date": "2026-08-22T04:00:00.000Z", "value": "34.25in"},
+                  {"date": "2026-08-29T04:00:00.000Z", "value": "34in"}],
+    }}
+    row = by_key(report.measurements(keys)["ratios"])["shoulder_waist"]
+    assert row["flat"] is True
+    assert 0 < row["change"] < row["noise"]
+
+
+def test_ratio_noise_grows_as_the_denominator_shrinks():
+    """A ratio over a small waist is jumpier than one over a large waist."""
+    assert report.ratio_noise(114.3, 70.0) > report.ratio_noise(114.3, 100.0)
+
+
+def test_missing_measurements_file_is_not_fatal():
+    m = report.measurements(None)
+    assert m["rows"] == [] and m["ratios"] == []
+
+
+def test_unmeasured_sites_are_dropped_not_blank():
+    m = report.measurements(meas("waist", ("2026-08-29", "34in")))
+    assert [r["key"] for r in m["rows"]] == ["waist"]

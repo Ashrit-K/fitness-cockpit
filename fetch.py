@@ -26,11 +26,21 @@ def call(method, params=None, rid=1):
         return json.load(resp)
 
 
-def get_all_weights():
+# Tape measurements, recorded weekly. Liftosaur keeps a left/right key for
+# every limb even when only one side is measured; keys with no values come
+# back empty and are dropped rather than written as empty lists.
+LENGTH_KEYS = [
+    "neck", "shoulders", "chest", "waist", "hips",
+    "bicepLeft", "bicepRight", "forearmLeft", "forearmRight",
+    "thighLeft", "thighRight", "calfLeft", "calfRight",
+]
+
+
+def get_measurement(key):
     values = []
     cursor = None
     while True:
-        args = {"key": "weight", "limit": "200"}
+        args = {"key": key, "limit": "200"}
         if cursor:
             args["cursor"] = cursor
         res = call("tools/call", {"name": "get_measurement", "arguments": args})
@@ -42,6 +52,19 @@ def get_all_weights():
             break
     values.sort(key=lambda v: v["timestamp"])
     return values
+
+
+def get_all_weights():
+    return get_measurement("weight")
+
+
+def get_all_measurements():
+    out = {}
+    for key in LENGTH_KEYS:
+        values = get_measurement(key)
+        if values:
+            out[key] = values
+    return out
 
 
 def get_all_history():
@@ -73,7 +96,11 @@ def main():
         json.dump({"records": get_all_history()}, f, indent=2)
     with open("custom_exercises.json", "w") as f:
         json.dump(get_custom_exercises(), f, indent=2)
-    print("fetched weights + history + custom exercises")
+    measures = get_all_measurements()
+    with open("measurements.json", "w") as f:
+        json.dump({"keys": measures}, f, indent=2)
+    print("fetched weights + history + custom exercises + %d measurement keys"
+          % len(measures))
 
 
 if __name__ == "__main__":

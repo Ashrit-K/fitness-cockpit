@@ -339,6 +339,15 @@
       <p class="card-h">Weigh-in history <span class="r" id="hist-r">—</span></p>
       <div id="fig-history"></div>
     </div>
+    <div class="card p3"><div class="kpi" id="kpi-vtaper"></div></div>
+    <div class="card p9">
+      <p class="card-h">Shape ratios <span class="r" id="ratio-r">—</span></p>
+      <div class="tbl-scroll" id="tbl-ratios"></div>
+    </div>
+    <div class="card p12 p">
+      <p class="card-h">Tape <span class="r" id="tape-r">—</span></p>
+      <div class="tbl-scroll" id="tbl-tape"></div>
+    </div>
   </div>
 
   <p class="band">Volume <em>hypertrophy</em></p>
@@ -2180,6 +2189,73 @@
     draw("burn", function () {
       if (!D.weight.length) throw new Error("no weigh-ins");
       burndown(D.goal, D.milestones, D.weight, null);
+    });
+
+    /* tape — weekly, and far too few readings to carry a trend line. The table
+       is the whole story: last value, the one before, and the gap between. */
+    var TAPE = D.measurements || { rows: [] };
+    /* the shared delta() rounds to one decimal, which erases a quarter-inch
+       change and every ratio move — the tape needs its own resolution */
+    function tapeDelta(n, dp) {
+      return (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n).toFixed(dp || 2);
+    }
+    var RATIO = {};
+    (TAPE.ratios || []).forEach(function (r) { RATIO[r.key] = r; });
+    /* a ratio only counts as moving once it clears the wobble it inherits
+       from both tape reads — under that it is reported flat, not as progress */
+    function ratioMove(r, terse) {
+      if (r.change === undefined) return "first reading";
+      if (r.flat) return terse ? "flat" : "flat · under ±" + r.noise.toFixed(3);
+      return tapeDelta(r.change, 3) + " over " + r.days + "d";
+    }
+    draw("kpi-vtaper", function () {
+      var r = RATIO.shoulder_waist;
+      if (!r) throw new Error("no shoulder and waist pair");
+      kpi("kpi-vtaper", {
+        k: "Shoulder : waist", v: r.latest.toFixed(3),
+        c: r.change === undefined || r.flat ? null : r.improving ? "good" : "warn",
+        n: ratioMove(r) + " · " + Math.abs(r.to_target).toFixed(3) +
+           " to " + r.target.toFixed(3)
+      });
+    });
+    draw("tbl-ratios", function () {
+      var rows = TAPE.ratios || [];
+      if (!rows.length) throw new Error("no ratio needs both of its sites measured");
+      var moved = rows.filter(function (r) { return r.change !== undefined && !r.flat; });
+      txt("ratio-r", rows[0].from
+        ? shortDate(rows[0].from) + " → " + shortDate(rows[0].d) + " · " +
+          (moved.length ? moved.length + " of " + rows.length + " past their noise floor"
+                        : "none past their noise floor yet")
+        : "first reading · " + longDate(rows[0].d));
+      table("tbl-ratios", ["Ratio", "Now", "Change", "Noise floor", "Target"],
+        rows.map(function (r) {
+          return [
+            r.label + (r.good === "up" ? " ↑" : " ↓"),
+            r.latest.toFixed(3),
+            ratioMove(r, true),
+            r.noise === null ? "—" : "±" + r.noise.toFixed(3),
+            r.target === null ? "—" : r.target.toFixed(3)
+          ];
+        }));
+    });
+    draw("tbl-tape", function () {
+      if (!TAPE.rows.length) throw new Error("no tape readings");
+      var last = TAPE.rows[0];
+      txt("tape-r", longDate(last.d) + " · " + last.n +
+          (last.n === 1 ? " reading" : " readings") +
+          " · flat is under " + TAPE.noise_in + " in");
+      table("tbl-tape", ["Site", "in", "cm", "Change", "Previous"],
+        TAPE.rows.map(function (m) {
+          return [
+            m.label,
+            m.in.toFixed(2),
+            m.cm.toFixed(1),
+            m.prev_d === undefined ? "—"
+              : m.flat ? "flat" : tapeDelta(m.change_in) + " in",
+            m.prev_d === undefined ? "first"
+              : shortDate(m.prev_d) + " · " + m.days + "d"
+          ];
+        }));
     });
 
     /* volume tiles */

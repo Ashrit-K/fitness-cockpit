@@ -15,7 +15,8 @@ from groups import (BROAD_GROUPS, CATEGORIES, GROUP_TO_CATEGORY, SYNERGIST_CREDI
                     VTAPER, groups_for, muscles_for, synergists_for, weighted_groups)
 from landmarks import LANDMARKS, state
 from patterns import DELT_HEADS, PATTERNS
-from lifto_parse import daily_weights, parse_record, ParseError
+from lifto_parse import (IN_CM, daily_weights, parse_length, parse_record,
+                         ParseError)
 
 # Liftosaur strips the local offset and stores every timestamp as +00:00.
 # The log was recorded in India, so clock-time questions need this back.
@@ -53,6 +54,36 @@ SMOOTH_WINDOW_DAYS = 7
 
 # Fixed, evenly spaced markers on the way down from the peak.
 MILESTONE_PCTS = [2.5, 5.0, 7.5]
+
+# A tape read by hand is good to about a quarter inch. A weekly change smaller
+# than that is the tape, not the body, so it is reported as flat.
+TAPE_NOISE_CM = 0.25 * IN_CM
+
+# Derived shape metrics. Both sides of a ratio carry the same unit, so each one
+# reads the same whether the tape is imperial or metric, and a ratio survives a
+# day when the scale is lying — it moves on shape, not on water or a full gut.
+#
+# `good` is the direction that counts as progress. `target` is a conventional
+# reference where one exists: 1.618 is the classic shoulder-to-waist physique
+# number, and 0.90 is the WHO waist-to-hip line for men. The other two have no
+# published target and are only useful read against their own history.
+RATIOS = [
+    ("shoulder_waist", "Shoulder : waist", "shoulders", "waist", 1.618, "up"),
+    ("chest_waist", "Chest : waist", "chest", "waist", None, "up"),
+    ("shoulder_chest", "Shoulder : chest", "shoulders", "chest", None, "up"),
+    ("waist_hip", "Waist : hip", "waist", "hips", 0.90, "down"),
+]
+
+# Display order for the tape table: the V-taper measurements first, then the
+# limbs. Anything with no readings is dropped rather than shown empty.
+MEASURE_LABELS = [
+    ("shoulders", "Shoulders"), ("chest", "Chest"), ("waist", "Waist"),
+    ("hips", "Hips"), ("neck", "Neck"),
+    ("bicepLeft", "Bicep L"), ("bicepRight", "Bicep R"),
+    ("forearmLeft", "Forearm L"), ("forearmRight", "Forearm R"),
+    ("thighLeft", "Thigh L"), ("thighRight", "Thigh R"),
+    ("calfLeft", "Calf L"), ("calfRight", "Calf R"),
+]
 
 # Strength retention compares a recent window against the year before it.
 WATCH_DAYS = 56
@@ -818,6 +849,116 @@ def bodyweight_series(weights):
             for d, kg in sorted(by_day.items())]
 
 
+def measure_series(values):
+    """[(date, cm)] oldest first, one reading per day.
+
+    The tape is read once per site. A second reading the same day is a redo of
+    the first, so the later one wins outright rather than averaging into it.
+    """
+    by_day = {}
+    for v in values or []:
+        try:
+            cm = parse_length(v["value"])
+            dt = datetime.fromisoformat(str(v["date"]).replace("Z", "+00:00"))
+        except (KeyError, TypeError, ValueError):
+            continue
+        by_day[dt.date()] = cm
+    return [(d, by_day[d]) for d in sorted(by_day)]
+
+
+def ratio_noise(num_cm, den_cm, noise_cm=TAPE_NOISE_CM):
+    """How far a ratio can wander when both tape reads are off by one tick.
+
+    A ratio inherits error from both sides. For a/b with each read good to
+    ±noise, the worst case is noise/b + a·noise/b². A move smaller than this
+    is the tape, and saying so is the difference between a signal and a story.
+    """
+    if not den_cm:
+        return None
+    return noise_cm / den_cm * (1 + num_cm / den_cm)
+
+
+def ratio_series(series, num, den):
+    """[(date, ratio)] on every day both sites were measured."""
+    a, b = dict(series.get(num) or []), dict(series.get(den) or [])
+    return [(d, a[d] / b[d]) for d in sorted(set(a) & set(b)) if b[d]]
+
+
+def ratios(series, noise_cm=TAPE_NOISE_CM):
+    """Derived shape metrics, each with its own noise floor.
+
+    The scale moves on water, food and salt; a ratio of two tape reads does
+    not. That makes these the steadier read on shape even though each one is
+    built from noisier parts, so every row carries the wobble it inherits and
+    a change inside that band is reported flat rather than as movement.
+    """
+    out = []
+    for key, label, num, den, target, good in RATIOS:
+        points = ratio_series(series, num, den)
+        if not points:
+            continue
+        last_day, last_r = points[-1]
+        floor = ratio_noise(dict(series[num])[last_day],
+                            dict(series[den])[last_day], noise_cm)
+        row = {"key": key, "label": label, "good": good, "target": target,
+               "latest": round(last_r, 3), "n": len(points),
+               "noise": round(floor, 3) if floor else None,
+               "d": last_day.isoformat(),
+               "series": [{"d": d.isoformat(), "r": round(r, 3)}
+                          for d, r in points]}
+        if target is not None:
+            row["to_target"] = round(target - last_r, 3)
+        if len(points) > 1:
+            first_day, first_r = points[0]
+            change = last_r - first_r
+            row.update({
+                "change": round(change, 3),
+                "from": first_day.isoformat(),
+                "days": (last_day - first_day).days,
+                "flat": floor is not None and abs(change) < floor,
+                "improving": change > 0 if good == "up" else change < 0,
+            })
+        out.append(row)
+    return out
+
+
+def measurements(meas, noise_cm=TAPE_NOISE_CM):
+    """Latest tape readings and the change since the one before.
+
+    Weekly readings are too few and too noisy to carry a rate, so nothing here
+    is projected. Each row is the last value, the one before it, and the gap,
+    with a change inside tape noise marked flat rather than called progress.
+    Values are stored in cm and echoed in inches, the unit they are taken in.
+    """
+    series = {k: measure_series(v)
+              for k, v in ((meas or {}).get("keys") or {}).items()}
+
+    rows = []
+    for key, label in MEASURE_LABELS:
+        points = series.get(key)
+        if not points:
+            continue
+        day, cm = points[-1]
+        row = {"key": key, "label": label, "d": day.isoformat(),
+               "cm": round(cm, 1), "in": round(cm / IN_CM, 2), "n": len(points)}
+        if len(points) > 1:
+            prev_day, prev_cm = points[-2]
+            change = cm - prev_cm
+            row.update({
+                "prev_cm": round(prev_cm, 1),
+                "prev_in": round(prev_cm / IN_CM, 2),
+                "prev_d": prev_day.isoformat(),
+                "change_cm": round(change, 1),
+                "change_in": round(change / IN_CM, 2),
+                "days": (day - prev_day).days,
+                "flat": abs(change) < noise_cm,
+            })
+        rows.append(row)
+
+    return {"rows": rows, "ratios": ratios(series, noise_cm),
+            "noise_in": round(noise_cm / IN_CM, 2)}
+
+
 # --------------------------------------------------------------- narrative
 
 def _fmt(n):
@@ -1040,7 +1181,7 @@ def notes(m, cats, sessions):
 
 # --------------------------------------------------------------- assembly
 
-def build(records, weights, customs, builtins, now=None):
+def build(records, weights, customs, builtins, now=None, meas=None):
     sessions = load_sessions(records)
     if not sessions:
         raise ValueError("no sessions parsed from history")
@@ -1112,6 +1253,7 @@ def build(records, weights, customs, builtins, now=None):
         "lifespans": life,
         "dow": dow,
         "weight": series,
+        "measurements": measurements(meas),
         "notes": notes(m, cats, sessions),
     }
 
@@ -1125,8 +1267,15 @@ def main():
         customs = {e["name"]: e for e in json.load(f)["exercises"]}
     with open("muscle_map.json") as f:
         builtins = json.load(f)
+    # Written by the same fetch, but a checkout from before tape measurements
+    # existed still has to build.
+    try:
+        with open("measurements.json") as f:
+            meas = json.load(f)
+    except FileNotFoundError:
+        meas = None
 
-    report = build(records, weights, customs, builtins)
+    report = build(records, weights, customs, builtins, meas=meas)
     with open("report.json", "w") as f:
         json.dump(report, f, separators=(",", ":"))
     print("report.json written — %d sessions, %d sets, %d exercises"

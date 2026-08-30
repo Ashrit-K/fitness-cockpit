@@ -4,6 +4,7 @@ class ParseError(Exception):
     pass
 
 LB_KG = 0.453592
+IN_CM = 2.54
 
 def parse_weight(s):
     s = s.strip()
@@ -11,6 +12,15 @@ def parse_weight(s):
         return float(s[:-2])
     if s.endswith("lb"):
         return float(s[:-2]) * LB_KG
+    return float(s)
+
+def parse_length(s):
+    """Tape measurement to cm. Liftosaur emits "34in" or "86.4cm"."""
+    s = str(s).strip()
+    if s.endswith("cm"):
+        return float(s[:-2])
+    if s.endswith("in"):
+        return float(s[:-2]) * IN_CM
     return float(s)
 
 SET_RE = re.compile(r"(\d+)x(\d+)(?:\|(\d+))?\+?\s+([\d.]+)(kg|lb)")
