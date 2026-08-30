@@ -339,10 +339,9 @@
       <p class="card-h">Weigh-in history <span class="r" id="hist-r">—</span></p>
       <div id="fig-history"></div>
     </div>
-    <div class="card p3"><div class="kpi" id="kpi-vtaper"></div></div>
-    <div class="card p9">
+    <div class="card p">
       <p class="card-h">Shape ratios <span class="r" id="ratio-r">—</span></p>
-      <div class="tbl-scroll" id="tbl-ratios"></div>
+      <div id="tbl-ratios"></div>
     </div>
     <div class="card p12 p">
       <p class="card-h">Tape <span class="r" id="tape-r">—</span></p>
@@ -794,6 +793,103 @@
      250px block of milestone text inside the frame. That is clutter, not
      information. Now: kilograms only, the descent filled so it reads at a
      glance, and the gutter holds one tick per milestone and nothing else. */
+  /* Shape ratios as gauges rather than a table. A bare number does not say
+     whether a move is real, so every track carries the band the ratio inherits
+     from tape error — inside it, nothing has happened. The first reading stays
+     on the track as a hollow marker, so the direction of travel is visible
+     without reading a single figure. */
+  function ratioGauges(host, rows) {
+    var W = 1220, rowH = 56, padT = 16, padB = 12;
+    var LBL = 150, VAL = 76, R = 96;
+    var x0 = LBL + VAL, pw = W - x0 - R;
+    var s = svg(host, W, padT + rows.length * rowH + padB);
+    s.setAttribute("aria-label", "Shape ratios against their targets");
+    function sgn(n) {
+      return (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n).toFixed(3);
+    }
+
+    rows.forEach(function (r, i) {
+      var y = padT + i * rowH + 20;
+      var first = r.series[0].r, last = r.latest, noise = r.noise || 0;
+      /* every track spans the same ±8 noise widths around the current value.
+         Scaling each row to its own data instead would draw two near-identical
+         noise floors — ±0.017 and ±0.016 — at six times different widths, and
+         the band is the whole point of the chart. Distance to target is not
+         allowed to set the scale either; it would crush the movement into a
+         sliver. The target is annotated at the edge when it falls outside. */
+      var span = noise ? noise * 8 : Math.max(Math.abs(last) * 0.04, 0.04);
+      var lo = last - span, hi = last + span;
+      function X(v) { return x0 + (v - lo) / (hi - lo) * pw; }
+      function clamp(x) { return Math.max(x0 + 3, Math.min(x0 + pw - 3, x)); }
+      function chevron(cx, cy, dir) {
+        return "M" + (cx - 4 * dir) + " " + (cy - 5) + "L" + (cx + 3 * dir) + " " + cy +
+               "L" + (cx - 4 * dir) + " " + (cy + 5) + "Z";
+      }
+
+      s.appendChild(el("text", { x: 0, y: y + 3, class: "tick",
+        style: "fill:var(--ink-2)" }, r.label + (r.good === "up" ? "  ↑" : "  ↓")));
+      s.appendChild(el("text", { x: 0, y: y + 19, class: "tick",
+        style: "fill:var(--muted)" },
+        r.change === undefined ? "first reading"
+          : r.flat ? "flat · inside ±" + noise.toFixed(3)
+                   : sgn(r.change) + " over " + r.days + "d"));
+
+      var v = el("text", { x: x0 - 16, y: y + 7, "text-anchor": "end", class: "big",
+                           "font-size": 20 });
+      v.textContent = last.toFixed(3);
+      s.appendChild(v);
+
+      s.appendChild(el("rect", { x: x0, y: y - 5, width: pw, height: 10, rx: 5,
+        fill: "var(--grid)" }));
+
+      /* the span actually travelled, coloured only once it clears the noise */
+      var a = Math.min(clamp(X(first)), X(last)), b = Math.max(clamp(X(first)), X(last));
+      var moved = r.change !== undefined && !r.flat;
+      s.appendChild(el("rect", { x: a, y: y - 5, width: Math.max(b - a, 3), height: 10,
+        rx: 5, fill: moved ? (r.improving ? "var(--good)" : "var(--bad)")
+                           : "var(--series-1)",
+        "fill-opacity": moved ? 0.9 : 0.45 }));
+
+      if (noise) {
+        s.appendChild(tipOn(el("rect", { x: X(last - noise), y: y - 12,
+          width: Math.max(X(last + noise) - X(last - noise), 3), height: 24, rx: 4,
+          fill: "var(--ink)", "fill-opacity": 0.08, stroke: "var(--rule)",
+          "stroke-width": 1, "stroke-dasharray": "2 3" }),
+          tk("noise floor · ±" + noise.toFixed(3)) +
+          tv("both tape reads are good to a quarter inch<br>" +
+             "a move inside this band is the tape, not the body")));
+      }
+
+      s.appendChild(tipOn(el("circle", { cx: clamp(X(first)), cy: y, r: 4,
+        fill: "var(--surface)", stroke: "var(--ink-2)", "stroke-width": 1.6 }),
+        tk("first reading") + tv("<b>" + first.toFixed(3) + "</b> on " +
+           longDate(r.from || r.d))));
+      s.appendChild(tipOn(el("circle", { cx: X(last), cy: y, r: 5.5, fill: "var(--ink)",
+        stroke: "var(--surface)", "stroke-width": 2 }),
+        tk("now") + tv("<b>" + last.toFixed(3) + "</b> on " + longDate(r.d))));
+
+      if (r.target === null) {
+        s.appendChild(el("text", { x: W - R + 8, y: y + 4, class: "tick",
+          style: "fill:var(--muted)" }, "no target"));
+      } else {
+        var tx = X(r.target), inside = tx > x0 && tx < x0 + pw;
+        if (inside) {
+          s.appendChild(el("line", { x1: tx, x2: tx, y1: y - 14, y2: y + 14,
+            stroke: "var(--good)", "stroke-width": 2 }));
+        } else {
+          /* off the scale: point at it rather than rescale the whole row */
+          var dir = tx > x0 + pw ? 1 : -1;
+          s.appendChild(el("path", { d: chevron(dir > 0 ? x0 + pw - 2 : x0 + 2, y, dir),
+            fill: "var(--good)" }));
+        }
+        s.appendChild(tipOn(el("text", { x: W - R + 8, y: y + 4, class: "tick",
+          style: "fill:var(--good)" }, r.target.toFixed(3)),
+          tk("target") + tv("<b>" + Math.abs(r.to_target).toFixed(3) + "</b> to go" +
+             (inside ? "" : "<br>off this scale — the track spans ±8 noise widths"))));
+      }
+    });
+  }
+
   /* Weekly rate. The dense-window chart spent a whole card on four readings and
      two near-flat projections, and almost all of it was empty. Weekly means off
      the same series carry far more: one bar per week, read against the target
@@ -2273,44 +2369,17 @@
     function tapeDelta(n, dp) {
       return (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n).toFixed(dp || 2);
     }
-    var RATIO = {};
-    (TAPE.ratios || []).forEach(function (r) { RATIO[r.key] = r; });
-    /* a ratio only counts as moving once it clears the wobble it inherits
-       from both tape reads — under that it is reported flat, not as progress */
-    function ratioMove(r, terse) {
-      if (r.change === undefined) return "first reading";
-      if (r.flat) return terse ? "flat" : "flat · under ±" + r.noise.toFixed(3);
-      return tapeDelta(r.change, 3) + " over " + r.days + "d";
-    }
-    draw("kpi-vtaper", function () {
-      var r = RATIO.shoulder_waist;
-      if (!r) throw new Error("no shoulder and waist pair");
-      kpi("kpi-vtaper", {
-        k: "Shoulder : waist", v: r.latest.toFixed(3),
-        c: r.change === undefined || r.flat ? null : r.improving ? "good" : "warn",
-        n: ratioMove(r) + " · " + Math.abs(r.to_target).toFixed(3) +
-           " to " + r.target.toFixed(3)
-      });
-    });
     draw("tbl-ratios", function () {
       var rows = TAPE.ratios || [];
       if (!rows.length) throw new Error("no ratio needs both of its sites measured");
       var moved = rows.filter(function (r) { return r.change !== undefined && !r.flat; });
-      txt("ratio-r", rows[0].from
+      txt("ratio-r", (rows[0].from
         ? shortDate(rows[0].from) + " → " + shortDate(rows[0].d) + " · " +
           (moved.length ? moved.length + " of " + rows.length + " past their noise floor"
                         : "none past their noise floor yet")
-        : "first reading · " + longDate(rows[0].d));
-      table("tbl-ratios", ["Ratio", "Now", "Change", "Noise floor", "Target"],
-        rows.map(function (r) {
-          return [
-            r.label + (r.good === "up" ? " ↑" : " ↓"),
-            r.latest.toFixed(3),
-            ratioMove(r, true),
-            r.noise === null ? "—" : "±" + r.noise.toFixed(3),
-            r.target === null ? "—" : r.target.toFixed(3)
-          ];
-        }));
+        : "first reading · " + longDate(rows[0].d)) +
+        " · track spans ±8 noise widths");
+      ratioGauges("tbl-ratios", rows);
     });
     draw("tbl-tape", function () {
       if (!TAPE.rows.length) throw new Error("no tape readings");
