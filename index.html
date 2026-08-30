@@ -339,7 +339,11 @@
       <p class="card-h">Weigh-in history <span class="r" id="hist-r">—</span></p>
       <div id="fig-history"></div>
     </div>
-    <div class="card p">
+    <div class="card p4">
+      <p class="card-h">Proportions <span class="r" id="shape-r">—</span></p>
+      <div id="fig-shape"></div>
+    </div>
+    <div class="card p8">
       <p class="card-h">Shape ratios <span class="r" id="ratio-r">—</span></p>
       <div id="tbl-ratios"></div>
     </div>
@@ -795,6 +799,109 @@
      250px block of milestone text inside the frame. That is clutter, not
      information. Now: kilograms only, the descent filled so it reads at a
      glance, and the gutter holds one tick per milestone and nothing else. */
+  /* The ratios as a shape. Four numbers on four tracks say whether each one
+     moved; they do not say what the body looks like. This draws the torso from
+     the tape itself — every width is a measured circumference on one scale, so
+     the outline is the proportions, not an illustration — with the shape the
+     next rung implies behind it. The gap between them is the V-taper.
+
+     Shoulders are drawn as a cap rather than a node on the outline. Shoulder
+     circumference is taken around the deltoids, a different plane from the
+     chest, and running one outline through both pinches the chest into a
+     barrel that is an artefact of the measurement, not the body.
+
+     Circumference stands in for width throughout. That assumes the
+     cross-sections are similar shapes — near enough between chest and waist —
+     and it is applied identically to both outlines, so the comparison holds
+     even where an absolute width is stylised. */
+  function bodyShape(host, tape, ratios) {
+    var W = 340, H = 382, cx = W / 2;
+    var site = {};
+    (tape.rows || []).forEach(function (r) { site[r.key] = r["in"]; });
+    if (["shoulders", "chest", "waist", "hips"].some(function (k) { return !site[k]; })) {
+      throw new Error("needs shoulders, chest, waist and hips");
+    }
+    var sw = null;
+    (ratios || []).forEach(function (r) { if (r.key === "shoulder_waist") sw = r; });
+    if (!sw) throw new Error("no shoulder-to-waist ratio");
+
+    var s = svg(host, W, H);
+    s.setAttribute("aria-label", "Torso proportions against the shape the next milestone implies");
+    /* the cap sits ON the ribcage — floating it above left the shoulders
+       reading as a separate object rather than part of the same body */
+    var yCap = 56, capH = 30, ys = [86, 208, 292];   // chest sits on the cap
+    var K = 96 / site.shoulders;
+    function half(v) { return v * K; }
+
+    function torso(hw) {
+      var L = hw.map(function (w) { return cx - w; });
+      var R = hw.map(function (w) { return cx + w; });
+      function down(a, i, j, bow) {
+        return " C" + a[i].toFixed(1) + " " + (ys[i] + bow) + "," + a[j].toFixed(1) +
+               " " + (ys[j] - bow) + "," + a[j].toFixed(1) + " " + ys[j];
+      }
+      function up(a, i, j, bow) {
+        return " C" + a[i].toFixed(1) + " " + (ys[i] - bow) + "," + a[j].toFixed(1) +
+               " " + (ys[j] + bow) + "," + a[j].toFixed(1) + " " + ys[j];
+      }
+      return "M" + L[0].toFixed(1) + " " + ys[0] + down(L, 0, 1, 34) + down(L, 1, 2, 26) +
+             " L" + R[2].toFixed(1) + " " + ys[2] + up(R, 2, 1, 26) + up(R, 1, 0, 34) + " Z";
+    }
+    function cap(w, attrs) {
+      return el("rect", Object.assign({ x: cx - w, y: yCap, width: 2 * w, height: capH,
+                                        rx: capH / 2 }, attrs));
+    }
+
+    var aim = sw.next_mark !== undefined ? sw.next_mark : sw.target;
+    if (aim) {
+      var waistT = site.shoulders / aim;
+      s.appendChild(el("path", {
+        d: torso([waistT * 1.40, waistT, waistT / 0.90].map(half)),
+        fill: "none", stroke: "var(--good)", "stroke-width": 1.7,
+        "stroke-dasharray": "5 4", "stroke-opacity": 0.95 }));
+    }
+
+    var defs = el("defs", {});
+    var g = el("linearGradient", { id: "shapeFill", x1: 0, y1: 0, x2: 0, y2: 1 });
+    g.appendChild(el("stop", { offset: "0%", "stop-color": "var(--series-1)",
+                               "stop-opacity": 0.46 }));
+    g.appendChild(el("stop", { offset: "100%", "stop-color": "var(--series-1)",
+                               "stop-opacity": 0.1 }));
+    defs.appendChild(g);
+    s.appendChild(defs);
+
+    /* the neck is drawn from its own tape reading, so the figure is scaled
+       throughout rather than topped with a generic stub */
+    var nw = half(site.neck || site.chest * 0.36) * 0.5, nTop = yCap - 28;
+    s.appendChild(el("path", { d: "M" + (cx - nw).toFixed(1) + " " + (yCap + 8) +
+      " L" + (cx - nw).toFixed(1) + " " + (nTop + 7) +
+      " Q" + cx + " " + (nTop - 5) + " " + (cx + nw).toFixed(1) + " " + (nTop + 7) +
+      " L" + (cx + nw).toFixed(1) + " " + (yCap + 8) + " Z",
+      fill: "url(#shapeFill)", stroke: "var(--series-1)", "stroke-width": 1.8 }));
+    s.appendChild(tipOn(cap(half(site.shoulders), { fill: "url(#shapeFill)",
+      stroke: "var(--series-1)", "stroke-width": 2.2 }),
+      tk("Shoulders") + tv("<b>" + site.shoulders.toFixed(1) + " in</b> around the delts")));
+    s.appendChild(el("path", {
+      d: torso([site.chest, site.waist, site.hips].map(half)),
+      fill: "url(#shapeFill)", stroke: "var(--series-1)", "stroke-width": 2.2 }));
+
+    [["shoulders", "Shoulders", yCap - 8], ["chest", "Chest", ys[0] + 10],
+     ["waist", "Waist", ys[1]], ["hips", "Hips", ys[2]]].forEach(function (m) {
+      var w = half(site[m[0]]);
+      s.appendChild(el("text", { x: cx + w + 10, y: m[2] + 4, class: "tick" },
+        site[m[0]].toFixed(1) + '"'));
+      s.appendChild(el("text", { x: cx - w - 10, y: m[2] + 4, class: "tick",
+        "text-anchor": "end", style: "fill:var(--muted)" }, m[1]));
+    });
+
+    if (aim) {
+      s.appendChild(el("text", { x: cx, y: H - 12, class: "tick", "text-anchor": "middle",
+        style: "fill:var(--good)" },
+        "dashed: shoulder-to-waist " + aim.toFixed(2) + " · waist " +
+        (site.shoulders / aim).toFixed(1) + '"'));
+    }
+  }
+
   /* Shape ratios as gauges rather than a table. A bare number does not say
      whether a move is real, so every track carries the band the ratio inherits
      from tape error — inside it, nothing has happened. The first reading stays
@@ -2417,6 +2524,10 @@
     function tapeDelta(n, dp) {
       return (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n).toFixed(dp || 2);
     }
+    draw("fig-shape", function () {
+      bodyShape("fig-shape", TAPE, TAPE.ratios);
+      txt("shape-r", longDate(TAPE.rows[0].d));
+    });
     draw("tbl-ratios", function () {
       var rows = TAPE.ratios || [];
       if (!rows.length) throw new Error("no ratio needs both of its sites measured");
