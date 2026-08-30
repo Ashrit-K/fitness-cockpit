@@ -901,7 +901,7 @@
        to fit a phone would squash the labels again, which is the bug this
        whole function was rewritten to stop */
     var narrow = W < 640;
-    var rowH = narrow ? 58 : 62, padT = 10, padB = 8;
+    var rowH = narrow ? 66 : 70, padT = 10, padB = 8;
     var LBL = narrow ? 116 : 168, VAL = narrow ? 66 : 84, R = narrow ? 92 : 150;
     var x0 = LBL + VAL, pw = W - x0 - R;
     var s = svg(host, W, padT + rows.length * rowH + padB);
@@ -911,7 +911,7 @@
     }
 
     rows.forEach(function (r, i) {
-      var top = padT + i * rowH, y = top + 32;
+      var top = padT + i * rowH, y = top + 35;
       var first = r.series[0].r, last = r.latest, noise = r.noise || 0;
       /* every track spans the same +-8 noise widths around the current value.
          Scaling each row to its own data instead would draw two near-identical
@@ -928,14 +928,47 @@
           fill: "var(--ink)", "fill-opacity": 0.035 }));
       }
 
-      s.appendChild(el("text", { x: 4, y: y - 5, class: "axlab",
+      s.appendChild(el("text", { x: 4, y: y - 14, class: "axlab",
         style: "fill:var(--ink)" }, r.label));
-      s.appendChild(el("text", { x: 4, y: y + 13, class: "tick",
+      s.appendChild(el("text", { x: 4, y: y + 2, class: "tick",
         style: "fill:var(--muted)" },
         narrow ? (r.good === "up" ? "higher ↑" : "lower ↓")
                : (r.good === "up" ? "higher is better" : "lower is better")));
 
-      var v = el("text", { x: x0 - 20, y: y + 8, "text-anchor": "end", class: "big",
+      /* a ratio can improve entirely by its denominator shrinking, which for a
+         V-taper means getting smaller rather than wider. The headline number
+         cannot tell those apart, so the split says which side did the work. */
+      if (r.from_num !== undefined) {
+        var fn = r.from_num, fd = r.from_den, tot = fn + fd;
+        var cap = null, tip = null;
+        if (Math.abs(tot) >= 1e-5) {
+          var opposed = fn * fd < 0;
+          if (opposed) {
+            cap = r.num_site + " " + sgn(fn).slice(0, 6) + ", " +
+                  r.den_site + " " + sgn(fd).slice(0, 6);
+            tip = "the two sides pulled against each other";
+          } else if (Math.abs(fn) < 0.02 * Math.abs(tot)) {
+            cap = "all of it from " + r.den_site;
+          } else if (Math.abs(fd) < 0.02 * Math.abs(tot)) {
+            cap = "all of it from " + r.num_site;
+          } else {
+            cap = Math.round(100 * fn / tot) + "% " + r.num_site + " · " +
+                  Math.round(100 * fd / tot) + "% " + r.den_site;
+          }
+        }
+        if (cap) {
+          s.appendChild(tipOn(el("text", { x: 4, y: y + 18, class: "tick",
+            style: "fill:var(--ink-2)" }, cap),
+            tk("what moved it") +
+            tv((tip ? tip + "<br>" : "") +
+               r.num_site + " contributed <b>" + sgn(fn) + "</b><br>" +
+               r.den_site + " contributed <b>" + sgn(fd) + "</b><br>" +
+               "per cm the " + r.den_site + " has " +
+               (r.lever_den / r.lever_num).toFixed(2) + "x the leverage")));
+        }
+      }
+
+      var v = el("text", { x: x0 - 20, y: y + 2, "text-anchor": "end", class: "big",
                            "font-size": 23 });
       v.textContent = last.toFixed(3);
       s.appendChild(v);
@@ -943,7 +976,7 @@
       var moved = r.change !== undefined && !r.flat;
       var state = r.change === undefined ? "first reading"
                 : r.flat ? "flat" : sgn(r.change) + " · " + r.days + "d";
-      s.appendChild(el("text", { x: x0 - 20, y: y + 24, "text-anchor": "end",
+      s.appendChild(el("text", { x: x0 - 20, y: y + 19, "text-anchor": "end",
         class: "tick", style: "fill:" + (moved ? (r.improving ? "var(--good)" : "var(--bad)")
                                                : "var(--muted)") }, state));
 

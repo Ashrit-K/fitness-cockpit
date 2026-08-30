@@ -806,3 +806,53 @@ def test_composition_splits_weight_into_fat_and_lean():
     assert c["fat_kg"] + c["lean_kg"] == pytest.approx(69.7, abs=0.1)
     assert c["lean_kg"] == pytest.approx(69.7 * (1 - c["bodyfat"] / 100), abs=0.1)
     assert c["noise"] > 0          # both sites feed the estimate's wobble
+
+
+def two(site_a, a0, a1, site_b, b0, b1):
+    def pair(v0, v1):
+        return [{"date": "2026-08-22T04:00:00.000Z", "value": v0},
+                {"date": "2026-08-29T04:00:00.000Z", "value": v1}]
+    return {"keys": {site_a: pair(a0, a1), site_b: pair(b0, b1)}}
+
+
+def test_decomposition_credits_the_side_that_moved():
+    """Shoulders flat, waist in: the whole move belongs to the denominator."""
+    m = two("shoulders", "45in", "45in", "waist", "34.25in", "34in")
+    row = by_key(report.measurements(m)["ratios"])["shoulder_waist"]
+    assert row["from_num"] == 0
+    assert row["from_den"] > 0
+    # the split reconstructs the change to first order
+    assert row["from_num"] + row["from_den"] == pytest.approx(row["change"], abs=1e-3)
+
+
+def test_decomposition_splits_when_both_move():
+    m = two("shoulders", "45in", "45.5in", "waist", "34.25in", "34in")
+    row = by_key(report.measurements(m)["ratios"])["shoulder_waist"]
+    assert row["from_num"] > 0 and row["from_den"] > 0
+    assert row["from_num"] > row["from_den"]      # half an inch of shoulder wins
+    assert row["from_num"] + row["from_den"] == pytest.approx(row["change"], abs=1e-3)
+
+
+def test_decomposition_signs_opposing_moves():
+    """Shoulders shrinking while the waist shrinks: the terms fight."""
+    m = two("shoulders", "45in", "44.5in", "waist", "34.25in", "34in")
+    row = by_key(report.measurements(m)["ratios"])["shoulder_waist"]
+    assert row["from_num"] < 0 < row["from_den"]
+
+
+def test_denominator_leverage_is_the_ratio_itself():
+    """(a/b^2) / (1/b) = a/b, exactly."""
+    m = two("shoulders", "45in", "45in", "waist", "34.25in", "34in")
+    row = by_key(report.measurements(m)["ratios"])["shoulder_waist"]
+    first = row["series"][0]["r"]
+    assert row["lever_den"] / row["lever_num"] == pytest.approx(first, abs=1e-3)
+
+
+def test_a_constant_denominator_gives_the_numerator_everything():
+    """Height never moves, so waist-to-height is all waist."""
+    m = report.measurements(meas("waist", ("2026-08-22", "34.25in"),
+                                 ("2026-08-29", "34in")))
+    row = by_key(m["ratios"])["waist_height"]
+    assert row["from_den"] == 0
+    # change is stored at 3dp for display, the terms at 5dp, so compare loosely
+    assert row["from_num"] == pytest.approx(row["change"], abs=1e-3)

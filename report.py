@@ -991,6 +991,26 @@ def ratios(series, noise_cm=TAPE_NOISE_CM):
         if len(points) > 1:
             first_day, first_r = points[0]
             change = last_r - first_r
+            # which side moved the ratio. A ratio can improve entirely by the
+            # denominator shrinking, which for a V-taper means getting smaller
+            # rather than wider — the headline number cannot tell those apart,
+            # so the two contributions are split out here.
+            #   d(a/b) = da/b - a*db/b^2, to first order
+            a_by, b_by = dict(series[num]), dict(series[den])
+            a0, b0 = a_by[first_day], b_by[first_day]
+            a1, b1 = a_by[last_day], b_by[last_day]
+            if b0:
+                from_num = (a1 - a0) / b0
+                from_den = -a0 * (b1 - b0) / (b0 ** 2)
+                row.update({
+                    "num_site": num, "den_site": den,
+                    "from_num": round(from_num, 5),
+                    "from_den": round(from_den, 5),
+                    # per unit, the denominator has exactly `ratio` times the
+                    # leverage of the numerator: (a/b^2) / (1/b) = a/b
+                    "lever_num": round(1.0 / b0, 5),
+                    "lever_den": round(a0 / b0 ** 2, 5),
+                })
             row.update({
                 "change": round(change, 3),
                 "from": first_day.isoformat(),
