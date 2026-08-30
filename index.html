@@ -481,8 +481,10 @@
     </div>
 
     <div class="card p">
-      <p class="card-h">Notes</p>
-      <div class="notes" id="notes"></div>
+      <details>
+        <summary>Notes</summary>
+        <div class="notes" id="notes"></div>
+      </details>
     </div>
   </div>
 
@@ -2036,11 +2038,18 @@
   /* ============================================================ HISTORY */
 
   function calendar(cells) {
+    var TOP_PAD = 20;
     var years = [], seen = {};
     cells.forEach(function (c) { if (!seen[c.y]) { seen[c.y] = 1; years.push(c.y); } });
     years.sort();
-    var CELL = 12, GAP = 2, PITCH = CELL + GAP, LEFT = 42, TOP = 20;
-    var W = LEFT + 53 * PITCH + 8, H = TOP + years.length * PITCH + 8;
+    /* the grid used to be drawn at a fixed 12px cell and left-aligned, which
+       left a third of the card empty. The cell is sized from the card width
+       instead, so 53 weeks always span it. */
+    var LEFT = 42, GAP = 2, TARGET_W = 1206;
+    var PITCH = Math.max(14, Math.floor((TARGET_W - LEFT - 8) / 53));
+    var CELL = PITCH - GAP;
+    var W = LEFT + 53 * PITCH + 8, H = TOP_PAD + years.length * PITCH + 8;
+    var TOP = TOP_PAD;
     var s = svg("cal", W, H, true);
     s.setAttribute("aria-label", "Training weeks by year");
     var MONTH_COL = [["J",1],["F",5],["M",10],["A",14],["M",18],["J",23],
@@ -2254,8 +2263,15 @@
       { l: "Logged a set in the last 12 months", c: "var(--series-1)" },
       { l: "Retired", c: "var(--grid)" }
     ]);
-    var W = 900, RH = 16, L = 226, R = 54, T = 20;
-    var H = T + rows.length * RH + 18;
+    var W = 1206, RH = 16, L = 226, R = 54, T = 20, GH = 22;
+    /* one header row per muscle group, so the chart reads as the programme
+       rather than as a chronology of whatever got logged first */
+    var lay = [], gseen = null;
+    rows.forEach(function (d) {
+      if (d.group !== gseen) { lay.push({ head: d.group }); gseen = d.group; }
+      lay.push({ row: d });
+    });
+    var H = T + lay.reduce(function (a, o) { return a + (o.head ? GH : RH); }, 0) + 18;
     var pw = W - L - R;
     var s = svg("life", W, H, true);
     s.setAttribute("aria-label", "First to last logged set per exercise");
@@ -2266,26 +2282,35 @@
     function X(iso) { return L + (dnum(iso) - t0) / (t1 - t0) * pw; }
     for (var y = y0; y <= y1 - 1; y++) {
       var x = L + (Date.UTC(y, 0, 1) - t0) / (t1 - t0) * pw;
-      s.appendChild(el("line", { x1: x, x2: x, y1: T - 4, y2: T + rows.length * RH,
+      s.appendChild(el("line", { x1: x, x2: x, y1: T - 4, y2: H - 18,
                                  class: "gridline" }));
       s.appendChild(el("text", { x: x, y: T - 8, class: "tick", "text-anchor": "middle" },
         ("" + y).slice(2)));
     }
     s.appendChild(el("text", { x: W - 2, y: T - 8, class: "tick", "text-anchor": "end" }, "sets"));
-    var live = 0;
-    rows.forEach(function (d, i) {
-      var yy = T + i * RH;
+    var live = 0, yy = T;
+    lay.forEach(function (o) {
+      if (o.head) {
+        s.appendChild(el("text", { x: 0, y: yy + 15, class: "tick",
+          style: "fill:var(--ink-2);letter-spacing:.08em" }, o.head.toUpperCase()));
+        s.appendChild(el("line", { x1: 0, x2: W - 2, y1: yy + 19.5, y2: yy + 19.5,
+          stroke: "var(--rule)", "stroke-width": 1, "stroke-opacity": 0.6 }));
+        yy += GH;
+        return;
+      }
+      var d = o.row;
       var isLive = last - dnum(d.last) <= 365 * 86400000;
       if (isLive) live++;
-      s.appendChild(el("text", { x: 0, y: yy + 11, class: "axlab" },
+      s.appendChild(el("text", { x: 10, y: yy + 11, class: "axlab" },
         d.name.length > 32 ? d.name.slice(0, 31) + "…" : d.name));
       s.appendChild(tipOn(el("rect", { x: X(d.first), y: yy + 4,
         width: Math.max(X(d.last) - X(d.first), 2.5), height: 8, rx: 1.5,
         fill: isLive ? "var(--series-1)" : "var(--grid)" }),
         tk(d.name) + tv(longDate(d.first) + " → " + longDate(d.last) + "<br><b>" +
-           fmt(d.sets) + "</b> sets · " + d.cat + (isLive ? "" : " · retired"))));
+           fmt(d.sets) + "</b> sets · " + d.group + (isLive ? "" : " · retired"))));
       s.appendChild(el("text", { x: W - 2, y: yy + 11, class: "tick", "text-anchor": "end" },
         fmt(d.sets)));
+      yy += RH;
     });
     txt("life-r", live + " / " + rows.length + " active · 12 mo");
   }
@@ -2300,7 +2325,9 @@
     });
     if (h0 > h1) throw new Error("no timing data");
     var NH = h1 - h0 + 1;
-    var L = 40, T = 20, CW = Math.max(26, (900 - L) / NH), CH = 24;
+    /* 900 was a guess that left the card a quarter empty; the columns are
+       sized from the card instead so the grid spans it */
+    var L = 40, T = 20, CW = Math.max(26, (1206 - L - 4) / NH), CH = 28;
     var W = L + NH * CW + 4, H = T + 7 * CH + 12;
     var s = svg("dow", W, H, true);
     s.setAttribute("aria-label", "Sessions by weekday and start hour");

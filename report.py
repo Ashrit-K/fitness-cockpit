@@ -36,6 +36,7 @@ MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 MIN_E1RM_DAYS = 12      # a strength panel needs this many training days
+E1RM_ACTIVE_DAYS = 84   # ...and must have been trained inside this window
 MIN_LIFESPAN_SETS = 10  # rotation bars ignore anything rarer than this
 BW_SET_SHARE = 0.8      # a movement is bodyweight at this share of 0 kg sets
 
@@ -55,6 +56,12 @@ SMOOTH_WINDOW_DAYS = 7
 # Fixed, evenly spaced markers on the way down from the peak.
 MILESTONE_PCTS = [2.5, 5.0, 7.5]
 
+# Height, in cm. Liftosaur has no height key and it does not change, so it is
+# a constant rather than a measurement. It exists to make waist-to-height
+# computable — the best-evidenced ratio on the page, and the one a tape alone
+# cannot give. Update it only if it is actually wrong.
+HEIGHT_CM = 166.0
+
 # A tape read by hand is good to about a quarter inch. A weekly change smaller
 # than that is the tape, not the body, so it is reported as flat.
 TAPE_NOISE_CM = 0.25 * IN_CM
@@ -63,11 +70,7 @@ TAPE_NOISE_CM = 0.25 * IN_CM
 # reads the same whether the tape is imperial or metric, and a ratio survives a
 # day when the scale is lying — it moves on shape, not on water or a full gut.
 #
-# `good` is the direction that counts as progress. `target` is a conventional
-# reference where one exists: 1.618 is the classic shoulder-to-waist physique
-# number, and 0.90 is the WHO waist-to-hip line for men. The other two have no
-# published target and are only useful read against their own history.
-# Targets revised 2026-08-30 after checking what each number actually rests on.
+# `good` is the direction that counts as progress. Targets revised 2026-08-30 after checking what each number actually rests on.
 # The milestone list is what makes a distant target usable: the next rung is
 # reachable, the target is not, and a gauge that only shows the target reads as
 # "no progress" for months.
@@ -86,17 +89,31 @@ TAPE_NOISE_CM = 0.25 * IN_CM
 #                   formula puts the waist at 70% of the chest, which is 1.43;
 #                   his own 52/29 stage measurements were 1.79. 1.40 is the
 #                   attainable end of that range.
+#   waist_height    The best-evidenced ratio here and the only one that needs a
+#                   number the tape cannot give. "Waist under half your height"
+#                   — NICE-endorsed, and a meta-analysis of ~300k adults found
+#                   it beats both waist circumference and BMI for cardiometabolic
+#                   risk. Bands: under 0.5 healthy, 0.5-0.6 consider action.
+#                   Height is exact, so only the waist contributes noise here.
 #   shoulder_chest  Deliberately no target. Nothing published sets one, and
 #                   inventing a number would be worse than admitting that. It
 #                   still earns its row as a delt-versus-chest development read.
 RATIOS = [
-    ("shoulder_waist", "Shoulder : waist", "shoulders", "waist", 1.60, "up",
-     [1.40, 1.50, 1.60]),
-    ("chest_waist", "Chest : waist", "chest", "waist", 1.40, "up",
-     [1.20, 1.30, 1.40]),
-    ("shoulder_chest", "Shoulder : chest", "shoulders", "chest", None, "up", []),
-    ("waist_hip", "Waist : hip", "waist", "hips", 0.90, "down",
-     [0.95, 0.90, 0.85]),
+    {"key": "shoulder_waist", "label": "Shoulder : waist",
+     "num": "shoulders", "den": "waist", "target": 1.60, "good": "up",
+     "marks": [1.40, 1.50, 1.60]},
+    {"key": "waist_height", "label": "Waist : height",
+     "num": "waist", "den": "height", "target": 0.50, "good": "down",
+     "marks": [0.55, 0.50, 0.45], "den_exact": True},
+    {"key": "chest_waist", "label": "Chest : waist",
+     "num": "chest", "den": "waist", "target": 1.40, "good": "up",
+     "marks": [1.20, 1.30, 1.40]},
+    {"key": "shoulder_chest", "label": "Shoulder : chest",
+     "num": "shoulders", "den": "chest", "target": None, "good": "up",
+     "marks": []},
+    {"key": "waist_hip", "label": "Waist : hip",
+     "num": "waist", "den": "hips", "target": 0.90, "good": "down",
+     "marks": [0.95, 0.90, 0.85]},
 ]
 
 # Display order for the tape table: the V-taper measurements first, then the
@@ -478,9 +495,20 @@ def delt_heads(sessions, now, weeks=12):
     return {"weeks": [w.isoformat() for w in starts], "heads": heads}
 
 
-def e1rm_panels(sessions, limit=6, window=5):
-    """Best estimated 1RM per training day, for the most-logged free-weight lifts."""
+def e1rm_panels(sessions, limit=6, window=5, now=None, active_days=E1RM_ACTIVE_DAYS):
+    """Best estimated 1RM per training day, for free-weight lifts still in use.
+
+    Ranking by total training days alone surfaced lifts abandoned years ago —
+    a panel for a press last touched in 2024 is history, not strength you are
+    holding. A lift has to have been trained inside `active_days` to earn a
+    panel; its whole history is still drawn once it does.
+    """
     days = best_e1rm_by_day(sessions)
+    if now is None:
+        now = sessions[-1]["date"] if sessions else None
+    if now is not None:
+        cutoff = now - timedelta(days=active_days)
+        days = {n: by_day for n, by_day in days.items() if max(by_day) >= cutoff}
     ranked = sorted(days.items(), key=lambda kv: -len(kv[1]))
     out = []
     for name, by_day in ranked:
@@ -543,8 +571,13 @@ def lifespans(sessions, customs, builtins):
         cat = GROUP_TO_CATEGORY.get(gs[0]) if gs else None
         out.append({"name": name, "first": rec["first"].isoformat(),
                     "last": rec["last"].isoformat(), "sets": rec["sets"],
-                    "cat": cat or "Core"})
-    out.sort(key=lambda r: (r["first"], r["name"]))
+                    "cat": cat or "Core", "group": gs[0] if gs else "Core"})
+    # grouped by what the movement trains, then oldest first inside the group.
+    # A flat first-seen list put the leg curl between two presses and made the
+    # chart a chronology of the log rather than a picture of the programme.
+    order = {g: i for i, g in enumerate(BROAD_GROUPS)}
+    out.sort(key=lambda r: (order.get(r["group"], len(BROAD_GROUPS)),
+                            r["first"], r["name"]))
     return out
 
 
@@ -891,16 +924,18 @@ def measure_series(values):
     return [(d, by_day[d]) for d in sorted(by_day)]
 
 
-def ratio_noise(num_cm, den_cm, noise_cm=TAPE_NOISE_CM):
-    """How far a ratio can wander when both tape reads are off by one tick.
+def ratio_noise(num_cm, den_cm, noise_cm=TAPE_NOISE_CM, den_noise_cm=None):
+    """How far a ratio can wander when the tape is off by one tick.
 
-    A ratio inherits error from both sides. For a/b with each read good to
-    ±noise, the worst case is noise/b + a·noise/b². A move smaller than this
-    is the tape, and saying so is the difference between a signal and a story.
+    A ratio inherits error from both sides: for a/b with each read good to
+    ±noise, the worst case is noise/b + a·noise/b². Saying so is the
+    difference between a signal and a story. A denominator that is not
+    measured — height — contributes nothing, so it passes den_noise_cm=0.
     """
     if not den_cm:
         return None
-    return noise_cm / den_cm * (1 + num_cm / den_cm)
+    den_noise = noise_cm if den_noise_cm is None else den_noise_cm
+    return noise_cm / den_cm + num_cm * den_noise / (den_cm ** 2)
 
 
 def ratio_series(series, num, den):
@@ -918,13 +953,17 @@ def ratios(series, noise_cm=TAPE_NOISE_CM):
     a change inside that band is reported flat rather than as movement.
     """
     out = []
-    for key, label, num, den, target, good, marks in RATIOS:
+    for spec in RATIOS:
+        key, label = spec["key"], spec["label"]
+        num, den = spec["num"], spec["den"]
+        target, good, marks = spec["target"], spec["good"], spec["marks"]
         points = ratio_series(series, num, den)
         if not points:
             continue
         last_day, last_r = points[-1]
         floor = ratio_noise(dict(series[num])[last_day],
-                            dict(series[den])[last_day], noise_cm)
+                            dict(series[den])[last_day], noise_cm,
+                            0.0 if spec.get("den_exact") else None)
         row = {"key": key, "label": label, "good": good, "target": target,
                "latest": round(last_r, 3), "n": len(points),
                "noise": round(floor, 3) if floor else None,
@@ -965,6 +1004,9 @@ def measurements(meas, noise_cm=TAPE_NOISE_CM):
     """
     series = {k: measure_series(v)
               for k, v in ((meas or {}).get("keys") or {}).items()}
+    # a constant, carried on the waist's own dates so the pair always lines up
+    if HEIGHT_CM and series.get("waist"):
+        series["height"] = [(d, HEIGHT_CM) for d, _cm in series["waist"]]
 
     rows = []
     for key, label in MEASURE_LABELS:

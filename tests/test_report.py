@@ -650,15 +650,18 @@ def test_ratio_is_unitless():
 
 
 def test_ratio_needs_both_of_its_sites():
-    only_waist = report.measurements(meas("waist", ("2026-08-29", "34in")))
-    assert only_waist["ratios"] == []
+    """A waist alone still yields waist-to-height — height is a constant, not
+    a measurement — but nothing that needs a second tape site."""
+    got = by_key(report.measurements(meas("waist", ("2026-08-29", "34in")))["ratios"])
+    assert set(got) == {"waist_height"}
 
 
-def test_all_four_ratios_derive_from_four_sites():
+def test_every_ratio_derives_from_four_sites():
     m = report.measurements(sites("2026-08-29", shoulders="45in", chest="38in",
                                   waist="34in", hips="37in"))
     got = by_key(m["ratios"])
-    assert set(got) == {"shoulder_waist", "chest_waist", "shoulder_chest", "waist_hip"}
+    assert set(got) == {"shoulder_waist", "waist_height", "chest_waist",
+                        "shoulder_chest", "waist_hip"}
     assert got["waist_hip"]["latest"] == pytest.approx(34 / 37, abs=1e-3)
     assert got["waist_hip"]["good"] == "down"
     assert got["shoulder_chest"]["target"] is None
@@ -735,3 +738,39 @@ def test_ratio_without_a_target_keeps_no_rungs():
     row = by_key(m["ratios"])["shoulder_chest"]
     assert row["target"] is None and row["marks"] == []
     assert "next_mark" not in row
+
+
+def test_waist_to_height_uses_the_height_constant():
+    m = report.measurements(meas("waist", ("2026-08-29", "83cm")))
+    row = by_key(m["ratios"])["waist_height"]
+    assert row["latest"] == pytest.approx(83.0 / report.HEIGHT_CM, abs=1e-3)
+
+
+def test_an_exact_denominator_contributes_no_noise():
+    """Height is not measured, so only the waist can wobble the ratio."""
+    waist, height = 86.4, report.HEIGHT_CM
+    both_noisy = report.ratio_noise(waist, height)
+    waist_only = report.ratio_noise(waist, height, den_noise_cm=0.0)
+    assert waist_only < both_noisy
+    assert waist_only == pytest.approx(report.TAPE_NOISE_CM / height, abs=1e-6)
+
+
+def test_e1rm_drops_a_lift_out_of_rotation():
+    """A press last touched two years ago is history, not held strength."""
+    live = _many("Bench Press", report.MIN_E1RM_DAYS)
+    stale = [rec("2024-01-%02d 09:00:00" % (i + 1), "  Overhead Press / 1x10 60kg")
+             for i in range(report.MIN_E1RM_DAYS)]
+    names = [p["name"] for p in report.e1rm_panels(sessions(*(live + stale)))]
+    assert "Bench Press" in names
+    assert "Overhead Press" not in names
+
+
+def test_rotation_is_grouped_by_muscle_group():
+    body_back = "  Pull Up / 10x8 0kg"
+    body_chest = "  Bench Press / 10x8 60kg"
+    # chest logged first, so a first-seen sort would put it on top
+    s = sessions(rec("2020-01-01 09:00:00", body_chest),
+                 rec("2021-01-01 09:00:00", body_back))
+    rows = report.lifespans(s, {}, {})
+    groups = [r["group"] for r in rows]
+    assert groups == sorted(groups, key=lambda g: report.BROAD_GROUPS.index(g))
