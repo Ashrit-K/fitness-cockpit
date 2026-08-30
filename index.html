@@ -327,7 +327,7 @@
       <div id="burn"></div>
     </div>
     <div class="card p">
-      <p class="card-h">Dense window <span class="r" id="cut-r">—</span></p>
+      <p class="card-h">Weekly rate <span class="r" id="cut-r">—</span></p>
       <div id="fig-cut"></div>
       <div class="legend" id="legend-cut"></div>
     </div>
@@ -789,11 +789,118 @@
      so none of them rules through the path it is measuring. Every mark ahead
      carries both dates — observed and target — so a colour never stands alone.
      The right axis reads the same scale as body weight. */
+  /* Peak → goal, on one scale. The old chart carried two y-axes for the same
+     quantity — "kg to goal" on the left and body weight on the right — plus a
+     250px block of milestone text inside the frame. That is clutter, not
+     information. Now: kilograms only, the descent filled so it reads at a
+     glance, and the gutter holds one tick per milestone and nothing else. */
+  /* Weekly rate. The dense-window chart spent a whole card on four readings and
+     two near-flat projections, and almost all of it was empty. Weekly means off
+     the same series carry far more: one bar per week, read against the target
+     pace, so a stall or a whoosh is obvious without reading a single number.
+     A mean over the week also absorbs the daily water swing that makes any one
+     pair of readings look like a trend. */
+  function rateBars(host, series, targetPerWeek, weeks) {
+    var W = 1220, H = 240, L = 52, R = 96, T = 24, B = 34;
+    var pw = W - L - R, ph = H - T - B;
+    var s = svg(host, W, H);
+    s.setAttribute("aria-label", "Body weight change per week against the target pace");
+
+    var byWeek = {};
+    series.forEach(function (p) {
+      var d = new Date(dnum(p.d));
+      var mon = new Date(d);
+      mon.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+      var k = mon.toISOString().slice(0, 10);
+      (byWeek[k] = byWeek[k] || []).push(p.kg);
+    });
+    var means = Object.keys(byWeek).sort().map(function (k) {
+      var v = byWeek[k];
+      return { w: k, kg: v.reduce(function (a, b) { return a + b; }, 0) / v.length,
+               n: v.length };
+    });
+    if (!means.length) throw new Error("no weigh-ins");
+    /* the axis is calendar weeks, not "weeks that happen to have data". Ten
+       years of sparse weigh-ins contain consecutive-week pairs scattered
+       across the decade; laying those side by side would space June 2021 next
+       to August 2026 and call it a trend. A week without a usable pair simply
+       draws no bar. */
+    var meanBy = {};
+    means.forEach(function (m) { meanBy[m.w] = m; });
+    var lastWeek = dnum(means[means.length - 1].w), n = weeks || 12, bars = [];
+    for (var i = n - 1; i >= 0; i--) {
+      var wk = new Date(lastWeek - i * 604800000).toISOString().slice(0, 10);
+      var pv = new Date(lastWeek - (i + 1) * 604800000).toISOString().slice(0, 10);
+      bars.push({ w: wk, n: meanBy[wk] ? meanBy[wk].n : 0,
+                  rate: meanBy[wk] && meanBy[pv] ? meanBy[wk].kg - meanBy[pv].kg : null });
+    }
+    var real = bars.filter(function (b) { return b.rate !== null; });
+    if (real.length < 2) throw new Error("not enough consecutive weeks to show a rate");
+
+    var top = Math.max.apply(null, real.map(function (b) { return Math.abs(b.rate); })
+                             .concat([Math.abs(targetPerWeek) * 1.7, 0.5]));
+    function Y(v) { return T + ph / 2 - v / top * (ph / 2); }
+    var slot = pw / bars.length, bw = Math.min(44, slot - 8);
+
+    [top, top / 2, 0, -top / 2, -top].forEach(function (v) {
+      s.appendChild(el("line", { x1: L, x2: W - R, y1: Y(v), y2: Y(v),
+        class: v === 0 ? "baseline" : "gridline" }));
+      s.appendChild(el("text", { x: L - 7, y: Y(v) + 3.5, class: "tick",
+        "text-anchor": "end" }, signed(v)));
+    });
+
+    var every = Math.ceil(bars.length / 9);
+    bars.forEach(function (b, i) {
+      var x = L + i * slot + (slot - bw) / 2;
+      if (b.rate === null) {
+        s.appendChild(tipOn(el("rect", { x: x, y: Y(0) - 1, width: bw, height: 2, rx: 1,
+          fill: "var(--rule)", "fill-opacity": 0.5 }),
+          tk("week of " + shortDate(b.w)) +
+          tv(b.n ? "no reading the week before, so no rate"
+                 : "no weigh-in that week")));
+        if (i % every === 0 || i === bars.length - 1) {
+          s.appendChild(el("text", { x: x + bw / 2, y: H - 10, class: "tick",
+            "text-anchor": "middle" }, shortDate(b.w)));
+        }
+        return;
+      }
+      var y = Math.min(Y(b.rate), Y(0)), h = Math.abs(Y(b.rate) - Y(0));
+      /* gaining is the only red state; losing slower than target is still
+         losing, so it stays blue rather than being scolded as a failure */
+      var fill = b.rate > 0 ? "var(--bad)"
+               : b.rate <= targetPerWeek ? "var(--good)" : "var(--series-1)";
+      s.appendChild(tipOn(el("rect", { x: x, y: y, width: bw,
+        height: Math.max(h, 1.5), rx: 3, fill: fill, "fill-opacity": 0.9 }),
+        tk("week of " + shortDate(b.w)) +
+        tv("<b>" + signed(b.rate) + " kg</b> on the week before<br>" + b.n +
+           (b.n === 1 ? " reading" : " readings") + " · target " +
+           signed(targetPerWeek))));
+      if (i % every === 0 || i === bars.length - 1) {
+        s.appendChild(el("text", { x: x + bw / 2, y: H - 10, class: "tick",
+          "text-anchor": "middle" }, shortDate(b.w)));
+      }
+    });
+
+    s.appendChild(el("line", { x1: L, x2: W - R, y1: Y(targetPerWeek), y2: Y(targetPerWeek),
+      stroke: "var(--good)", "stroke-width": 1.4, "stroke-dasharray": "5 4" }));
+    s.appendChild(el("text", { x: W - R + 7, y: Y(targetPerWeek) + 3.5, class: "tick",
+      style: "fill:var(--good)" }, "target " + signed(targetPerWeek)));
+
+    var mean = real.reduce(function (a, b) { return a + b.rate; }, 0) / real.length;
+    if (Math.abs(Y(mean) - Y(targetPerWeek)) > 13) {
+      s.appendChild(el("line", { x1: L, x2: W - R, y1: Y(mean), y2: Y(mean),
+        stroke: "var(--ink-2)", "stroke-width": 1, "stroke-dasharray": "2 5" }));
+      s.appendChild(el("text", { x: W - R + 7, y: Y(mean) + 3.5, class: "tick" },
+        "mean " + signed(mean)));
+    }
+    return { bars: real, weeks: bars.length, mean: mean };
+  }
+
   function burndown(goal, milestones, series, st) {
-    var W = 1240, H = 330, L = 52, R = 250, T = 46, B = 30;
+    var W = 1240, H = 320, L = 46, R = 104, T = 26, B = 30;
     var pw = W - L - R, ph = H - T - B;
     var s = svg("burn", W, H);
-    s.setAttribute("aria-label", "Kilograms to goal over time, with milestones");
+    s.setAttribute("aria-label", "Body weight from the peak down to the goal");
 
     var GOAL = goal.high, rem = goal.smooth_kg - GOAL;
     var anchor = dnum(goal.latest_date);
@@ -804,121 +911,88 @@
     var t0 = dnum(goal.peak_date);
     var t1 = rate ? anchor + rem / rate * 86400000 + 5 * 86400000
                   : anchor + 30 * 86400000;
-    var top = Math.max(goal.peak_kg - GOAL, rem) * 1.06 || 1;
+    var hi = Math.max(goal.peak_kg, goal.smooth_kg) + 0.6, lo = GOAL - 0.6;
     function X(t) { return L + (t - t0) / (t1 - t0) * pw; }
-    function Y(v) { return T + ph - v / top * ph; }
-    function whenAt(v, perDay) {
-      return perDay ? anchor + (rem - v) / perDay * 86400000 : null;
+    function Y(kg) { return T + ph - (kg - lo) / (hi - lo) * ph; }
+
+    var defs = el("defs", {});
+    var grad = el("linearGradient", { id: "burnFill", x1: 0, y1: 0, x2: 0, y2: 1 });
+    grad.appendChild(el("stop", { offset: "0%", "stop-color": "var(--series-1)",
+                                  "stop-opacity": 0.34 }));
+    grad.appendChild(el("stop", { offset: "100%", "stop-color": "var(--series-1)",
+                                  "stop-opacity": 0 }));
+    defs.appendChild(grad);
+    s.appendChild(defs);
+
+    var stepKg = (hi - lo) > 9 ? 2 : 1;
+    for (var kg = Math.ceil(lo); kg <= hi; kg++) {
+      if (kg % stepKg) continue;
+      s.appendChild(el("line", { x1: L, x2: W - R, y1: Y(kg), y2: Y(kg), class: "gridline" }));
+      s.appendChild(el("text", { x: L - 7, y: Y(kg) + 3.5, class: "tick",
+                                 "text-anchor": "end" }, kg));
     }
-
-    niceAxis(top, 4).ticks.forEach(function (v) {
-      if (v > top) return;
-      s.appendChild(el("line", { x1: L, x2: W - R, y1: Y(v), y2: Y(v), class: "gridline" }));
-      s.appendChild(el("text", { x: L - 7, y: Y(v) + 3.5, class: "tick",
-                                 "text-anchor": "end" }, fmt1(v)));
-    });
-    s.appendChild(el("text", { x: 0, y: 11, class: "axlab" }, "kg to goal"));
-
-    /* the same scale, read as body weight */
-    s.appendChild(el("line", { x1: W - R, x2: W - R, y1: T, y2: T + ph, class: "baseline" }));
-    s.appendChild(el("text", { x: W - R + 6, y: 11, class: "axlab" }, "body weight"));
-    for (var kg = Math.ceil(GOAL); kg - GOAL <= top; kg++) {
-      var y = Y(kg - GOAL), major = kg % 2 === 0;
-      s.appendChild(el("line", { x1: L, x2: W - R, y1: y, y2: y, stroke: "var(--grid)",
-        "stroke-width": 1, "stroke-opacity": major ? 0 : 0.45, "stroke-dasharray": "2 4" }));
-      s.appendChild(el("line", { x1: W - R, x2: W - R + 4, y1: y, y2: y,
-        stroke: "var(--rule)", "stroke-width": 1 }));
-      s.appendChild(el("text", { x: W - R + 8, y: y + 3.5, class: "tick",
-        "font-size": major ? 10.5 : 9.5,
-        style: "fill:" + (major ? "var(--ink-2)" : "var(--muted)") }, kg.toFixed(1)));
-    }
-    s.appendChild(el("text", { x: W - R + 44, y: T - 8, class: "tick",
-      style: "fill:var(--series-1)" }, "observed"));
-    s.appendChild(el("text", { x: W - R + 118, y: T - 8, class: "tick",
-      style: "fill:var(--good)" }, "target"));
-
     var spanDays = (t1 - t0) / 86400000;
     var step = spanDays > 120 ? 21 : spanDays > 60 ? 14 : 7;
     for (var t = t0; t <= t1; t += step * 86400000) {
-      var x = X(t);
-      s.appendChild(el("line", { x1: x, x2: x, y1: T, y2: T + ph, class: "gridline" }));
-      s.appendChild(el("text", { x: x, y: H - 8, class: "tick", "text-anchor": "middle" },
+      s.appendChild(el("line", { x1: X(t), x2: X(t), y1: T, y2: T + ph, class: "gridline" }));
+      s.appendChild(el("text", { x: X(t), y: H - 8, class: "tick", "text-anchor": "middle" },
         shortDate(new Date(t).toISOString())));
     }
 
+    /* the goal is a floor, not one more dashed line among many */
+    s.appendChild(el("line", { x1: L, x2: W - R, y1: Y(GOAL), y2: Y(GOAL),
+      stroke: "var(--good)", "stroke-width": 1.6 }));
+    s.appendChild(el("text", { x: W - R + 7, y: Y(GOAL) + 3.5, class: "tick",
+      style: "fill:var(--good)" }, "goal " + fmt1(GOAL)));
+
     milestones.forEach(function (m) {
-      var v = m.kg - GOAL;
-      if (v > top || v < 0) return;
-      var y = Y(v);
-      var hitAt = m.hit && m.date ? dnum(m.date) : null;
-      var obs = hitAt === null ? whenAt(v, rate) : null;
-      var from = hitAt !== null ? X(hitAt) : obs !== null ? X(obs) : L;
-      s.appendChild(el("line", { x1: Math.max(from, L), x2: W - R, y1: y, y2: y,
-        stroke: m.hit ? "var(--series-4)" : "var(--rule)",
-        "stroke-width": 1, "stroke-dasharray": "4 4" }));
-      s.appendChild(el("text", { x: W - R + 44, y: y - 3, class: "dlab",
-        style: "fill:" + (m.hit ? "var(--series-4)" : "var(--ink-2)") },
-        (m.hit ? "★ " : "") + (m.goal ? "goal · " + fmt1(m.kg)
-                                      : m.label + " · " + fmt1(m.kg))));
-      if (hitAt !== null) {
-        s.appendChild(el("text", { x: W - R + 44, y: y + 10, class: "tick",
-          style: "fill:var(--series-4)" }, shortDate(m.date)));
-        var at = path.filter(function (p) { return p.d === m.date; })[0];
-        if (at) {
-          s.appendChild(tipOn(el("path", { d: starPath(0, 0, 7),
-            transform: "translate(" + X(hitAt).toFixed(1) + "," + Y(at.kg - GOAL).toFixed(1) + ")",
-            fill: "var(--series-4)", stroke: "var(--surface)", "stroke-width": 1 }),
-            tk(m.label) + tv("<b>" + fmt1(m.kg) + " kg</b> reached on " + longDate(m.date))));
-        }
-        return;
-      }
-      if (obs !== null) {
-        s.appendChild(el("text", { x: W - R + 44, y: y + 10, class: "tick",
-          style: "fill:var(--series-1)" }, "~ " + shortDate(new Date(obs).toISOString())));
-        s.appendChild(tipOn(el("circle", { cx: X(obs), cy: y, r: 3.6,
-          fill: "var(--series-1)", stroke: "var(--surface)", "stroke-width": 1.5 }),
-          tk(m.label + " · at the observed pace") +
-          tv("<b>" + fmt1(m.kg) + " kg</b> around " +
-             longDate(new Date(obs).toISOString()))));
-      }
-      var tgt = whenAt(v, target);
-      if (tgt !== null) {
-        s.appendChild(el("text", { x: W - R + 118, y: y + 10, class: "tick",
-          style: "fill:var(--good)" }, "~ " + shortDate(new Date(tgt).toISOString())));
+      if (m.goal || m.kg > hi || m.kg < lo) return;
+      var y = Y(m.kg), hit = m.hit && m.date;
+      s.appendChild(el("line", { x1: L, x2: W - R, y1: y, y2: y,
+        stroke: hit ? "var(--series-4)" : "var(--rule)", "stroke-width": 1,
+        "stroke-dasharray": "3 5", "stroke-opacity": hit ? 0.85 : 0.5 }));
+      s.appendChild(tipOn(el("text", { x: W - R + 7, y: y + 3.5, class: "tick",
+        style: "fill:" + (hit ? "var(--series-4)" : "var(--ink-2)") },
+        (hit ? "★ " : "") + fmt1(m.kg)),
+        tk(m.label) + tv(hit ? "<b>" + fmt1(m.kg) + " kg</b> on " + longDate(m.date)
+                             : "<b>" + fmt1(m.kg) + " kg</b> · " +
+                               fmt1(goal.smooth_kg - m.kg) + " kg to go")));
+      var at = hit ? path.filter(function (p) { return p.d === m.date; })[0] : null;
+      if (at) {
+        s.appendChild(el("path", { d: starPath(0, 0, 6),
+          transform: "translate(" + X(dnum(m.date)).toFixed(1) + "," + Y(at.kg).toFixed(1) + ")",
+          fill: "var(--series-4)", stroke: "var(--surface)", "stroke-width": 1 }));
       }
     });
 
     if (path.length > 1) {
-      s.appendChild(el("path", { d: path.map(function (p, i) {
-        return (i ? "L" : "M") + X(dnum(p.d)).toFixed(1) + " " + Y(p.kg - GOAL).toFixed(1);
-      }).join(" "), fill: "none", stroke: "var(--series-1)", "stroke-width": 2.4,
-        "stroke-linejoin": "round" }));
+      var line = path.map(function (p, i) {
+        return (i ? "L" : "M") + X(dnum(p.d)).toFixed(1) + " " + Y(p.kg).toFixed(1);
+      }).join(" ");
+      s.appendChild(el("path", { fill: "url(#burnFill)", stroke: "none",
+        d: line + " L" + X(dnum(path[path.length - 1].d)).toFixed(1) + " " + (T + ph) +
+           " L" + X(dnum(path[0].d)).toFixed(1) + " " + (T + ph) + " Z" }));
+      s.appendChild(el("path", { d: line, fill: "none", stroke: "var(--series-1)",
+        "stroke-width": 2.4, "stroke-linejoin": "round" }));
     }
     path.forEach(function (p) {
-      s.appendChild(tipOn(el("circle", { cx: X(dnum(p.d)), cy: Y(p.kg - GOAL), r: 2.8,
-        fill: "var(--series-1)", "fill-opacity": 0.5 }),
+      s.appendChild(tipOn(el("circle", { cx: X(dnum(p.d)), cy: Y(p.kg), r: 2.6,
+        fill: "var(--series-1)", "fill-opacity": 0.55 }),
         tk(longDate(p.d)) + tv("<b>" + fmt1(p.kg) + " kg</b> · " +
            fmt1(p.kg - GOAL) + " kg to go")));
     });
 
-    /* the target pace is truncated at the edge — its job is to show a shallower
-       slope, not to stretch the chart out to its own landing date */
+    /* each pace, projected from today and truncated at the frame */
     [[rate, "var(--series-1)", "6 4"], [target, "var(--good)", "2 4"]].forEach(function (r) {
       if (!r[0]) return;
       var end = anchor + rem / r[0] * 86400000;
-      var yEnd = end > t1 ? rem - r[0] * ((t1 - anchor) / 86400000) : 0;
-      s.appendChild(el("line", { x1: X(anchor), y1: Y(rem), x2: X(Math.min(end, t1)),
-        y2: Y(Math.max(yEnd, 0)), stroke: r[1], "stroke-width": 2, "stroke-dasharray": r[2] }));
+      var kgEnd = end > t1 ? goal.smooth_kg - r[0] * ((t1 - anchor) / 86400000) : GOAL;
+      s.appendChild(el("line", { x1: X(anchor), y1: Y(goal.smooth_kg),
+        x2: X(Math.min(end, t1)), y2: Y(Math.max(kgEnd, GOAL)),
+        stroke: r[1], "stroke-width": 2, "stroke-dasharray": r[2] }));
     });
-    if (st) {
-      s.appendChild(el("text", { x: L + 4, y: T + 13, class: "tick",
-        style: "fill:var(--series-1)" }, "measured " + signed(st.trend_kg_per_week) + " kg/wk"));
-      s.appendChild(el("text", { x: L + 4, y: T + 25, class: "tick",
-        style: "fill:var(--good)" }, "target " + signed(st.target_kg_per_week) + " kg/wk"));
-    }
-    s.appendChild(el("circle", { cx: X(anchor), cy: Y(rem), r: 5, fill: "var(--ink)",
-      stroke: "var(--surface)", "stroke-width": 2 }));
-    s.appendChild(el("line", { x1: L, x2: W - R, y1: Y(0), y2: Y(0), class: "baseline" }));
+    s.appendChild(el("circle", { cx: X(anchor), cy: Y(goal.smooth_kg), r: 5,
+      fill: "var(--ink)", stroke: "var(--surface)", "stroke-width": 2 }));
   }
 
   function gauge(goal) {
@@ -2416,8 +2490,12 @@
       draw("burn", function () { burndown(D.goal, D.milestones, D.weight, st); });
       var next = D.milestones.filter(function (m) { return !m.hit; })[0];
       var toNext = next ? D.goal.smooth_kg - next.kg : null;
+      /* the two paces used to be printed inside the plot, over the line —
+         they belong in the header with the rest of the framing */
       txt("burn-r", fmt1(D.goal.peak_kg) + " → " + fmt1(D.goal.high) + " kg · " +
-          shortDate(D.goal.peak_date) + " → " + shortDate(D.goal.latest_date));
+          shortDate(D.goal.peak_date) + " → " + shortDate(D.goal.latest_date) +
+          (st ? " · measured " + signed(st.trend_kg_per_week) +
+                " vs target " + signed(st.target_kg_per_week) + " kg/wk" : ""));
       readout("ro-burn", [
         { k: "Now", v: fmt1(D.goal.smooth_kg) + " kg" },
         { k: "Off the peak", v: fmt1(D.goal.lost_kg) + " kg" },
@@ -2472,28 +2550,17 @@
       txt("rail-eta", D.goal.reached ? "reached"
           : etaPace ? dateLabel(etaPace) : "—");
 
-      txt("cut-r", shortDate(st.dense_start) + " → · " + dense.readings + " readings · " +
-          (settled ? "settled" : "settles " + settles + " d"));
       draw("fig-cut", function () {
-        if (cut.length < 2) throw new Error("dense window too short");
-        weightChart("fig-cut", cut, {
-          width: 1220, height: 240, maxGap: 14, label: "Body weight, dense window",
-          band: { low: D.goal.low, high: D.goal.high },
-          milestones: D.milestones, smoothDays: 5,
-          /* project about twice as far as the window is long, so the readings
-             keep the room they have earned and the horizon grows with them */
-          projectDays: Math.max(10, Math.min(35, dense.days * 2)),
-          trends: [
-            { from: denseStart, anchorT: dnum(st.latest_date), anchorKg: st.latest_kg,
-              rate: trend, color: "var(--series-1)", dash: "6 4",
-              label: settled ? "Measured" : "Measured (provisional)" },
-            { from: denseStart, anchorT: dnum(st.latest_date), anchorKg: st.latest_kg,
-              rate: target, color: "var(--good)", dash: "2 4", label: "Target" }
-          ]
-        });
+        var r = rateBars("fig-cut", D.weight, target, 12);
+        var under = r.bars.filter(function (b) { return b.rate <= target; }).length;
+        var gained = r.bars.filter(function (b) { return b.rate > 0; }).length;
+        txt("cut-r", r.weeks + " weeks · " + r.bars.length + " with a rate · mean " +
+            signed(r.mean) + " kg/wk · " + under + " at or past target" +
+            (gained ? " · " + gained + " up" : ""));
         legend("legend-cut", [
-          { l: "measured " + signed(trend) + " kg/wk", c: "var(--series-1)" },
-          { l: "target " + signed(target) + " kg/wk", c: "var(--good)" }
+          { l: "at or past target " + signed(target), c: "var(--good)" },
+          { l: "losing, short of target", c: "var(--series-1)" },
+          { l: "gained on the week", c: "var(--bad)" }
         ]);
       });
     }).catch(function () {
