@@ -661,7 +661,7 @@ def test_every_ratio_derives_from_four_sites():
                                   waist="34in", hips="37in"))
     got = by_key(m["ratios"])
     assert set(got) == {"shoulder_waist", "waist_height", "chest_waist",
-                        "shoulder_chest", "waist_hip"}
+                        "shoulder_chest", "shoulder_hip", "waist_hip"}
     assert got["waist_hip"]["latest"] == pytest.approx(34 / 37, abs=1e-3)
     assert got["waist_hip"]["good"] == "down"
     assert got["shoulder_chest"]["target"] is None
@@ -774,3 +774,35 @@ def test_rotation_is_grouped_by_muscle_group():
     rows = report.lifespans(s, {}, {})
     groups = [r["group"] for r in rows]
     assert groups == sorted(groups, key=lambda g: report.BROAD_GROUPS.index(g))
+
+
+def test_navy_bodyfat_matches_the_published_formula():
+    """Hodgdon & Beckett 1984, in inches: 86.010·log10(w−n) − 70.041·log10(h) + 36.76."""
+    import math
+    waist_cm, neck_cm, h_cm = 86.36, 35.24, 166.0
+    gap = (waist_cm - neck_cm) / report.IN_CM
+    want = (86.010 * math.log10(gap)
+            - 70.041 * math.log10(h_cm / report.IN_CM) + 36.76)
+    assert report.navy_bodyfat(waist_cm, neck_cm, h_cm) == pytest.approx(want)
+
+
+def test_navy_bodyfat_refuses_an_impossible_gap():
+    assert report.navy_bodyfat(30.0, 40.0, 166.0) is None
+    assert report.navy_bodyfat(None, 35.0, 166.0) is None
+
+
+def test_composition_needs_both_sites_on_one_day():
+    only_waist = {"keys": {"waist": [
+        {"date": "2026-08-29T04:00:00.000Z", "value": "34in"}]}}
+    assert report.composition(only_waist, 70.0) is None
+
+
+def test_composition_splits_weight_into_fat_and_lean():
+    keys = {"keys": {
+        "waist": [{"date": "2026-08-29T04:00:00.000Z", "value": "34in"}],
+        "neck": [{"date": "2026-08-29T04:00:00.000Z", "value": "13.875in"}],
+    }}
+    c = report.composition(keys, 69.7)
+    assert c["fat_kg"] + c["lean_kg"] == pytest.approx(69.7, abs=0.1)
+    assert c["lean_kg"] == pytest.approx(69.7 * (1 - c["bodyfat"] / 100), abs=0.1)
+    assert c["noise"] > 0          # both sites feed the estimate's wobble

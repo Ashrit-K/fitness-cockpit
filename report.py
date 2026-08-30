@@ -95,6 +95,11 @@ TAPE_NOISE_CM = 0.25 * IN_CM
 #                   it beats both waist circumference and BMI for cardiometabolic
 #                   risk. Bands: under 0.5 healthy, 0.5-0.6 consider action.
 #                   Height is exact, so only the waist contributes noise here.
+#   shoulder_hip    No target either, but it earns a row for a specific reason:
+#                   Hughes & Gallup, the study usually cited to justify 1.618
+#                   for shoulder-to-waist, actually measured shoulder-to-HIP.
+#                   This is the number that work was about, so it is tracked
+#                   honestly rather than borrowed to prop up a different ratio.
 #   shoulder_chest  Deliberately no target. Nothing published sets one, and
 #                   inventing a number would be worse than admitting that. It
 #                   still earns its row as a delt-versus-chest development read.
@@ -110,6 +115,9 @@ RATIOS = [
      "marks": [1.20, 1.30, 1.40]},
     {"key": "shoulder_chest", "label": "Shoulder : chest",
      "num": "shoulders", "den": "chest", "target": None, "good": "up",
+     "marks": []},
+    {"key": "shoulder_hip", "label": "Shoulder : hip",
+     "num": "shoulders", "den": "hips", "target": None, "good": "up",
      "marks": []},
     {"key": "waist_hip", "label": "Waist : hip",
      "num": "waist", "den": "hips", "target": 0.90, "good": "down",
@@ -994,6 +1002,77 @@ def ratios(series, noise_cm=TAPE_NOISE_CM):
     return out
 
 
+def navy_bodyfat(waist_cm, neck_cm, height_cm=HEIGHT_CM):
+    """US Navy tape estimate of body fat for men, as a percentage.
+
+    Hodgdon & Beckett, Naval Health Research Center, 1984. The published form
+    takes inches: 86.010·log10(waist − neck) − 70.041·log10(height) + 36.76.
+    """
+    if not (waist_cm and neck_cm and height_cm):
+        return None
+    gap_in = (waist_cm - neck_cm) / IN_CM
+    if gap_in <= 0:
+        return None
+    return (86.010 * math.log10(gap_in)
+            - 70.041 * math.log10(height_cm / IN_CM) + 36.76)
+
+
+def composition(meas, smooth_kg, noise_cm=TAPE_NOISE_CM):
+    """Fat and lean mass off the tape, and the muscle those imply.
+
+    The Navy estimate is only good to about ±3-4 points against hydrostatic
+    weighing, so the absolute number is soft and is labelled as such. Its
+    error is systematic, though — same tape, same sites, same person — so the
+    change between two readings is far tighter than the number itself. That
+    is the whole reason it is worth carrying: it separates losing fat from
+    losing weight, which the scale alone cannot do.
+
+    FFMI is normalised to 1.83 m so it can be read against the usual scale,
+    where the low twenties is a well-trained natural lifter.
+    """
+    series = {k: measure_series(v)
+              for k, v in ((meas or {}).get("keys") or {}).items()}
+    waist, neck = series.get("waist"), series.get("neck")
+    if not waist or not neck:
+        return None
+    day = waist[-1][0]
+    neck_by_day = dict(neck)
+    if day not in neck_by_day:
+        return None
+    w_cm, n_cm = waist[-1][1], neck_by_day[day]
+    bf = navy_bodyfat(w_cm, n_cm)
+    if bf is None:
+        return None
+
+    # both sites move the estimate, and they move it in opposite directions
+    hi = navy_bodyfat(w_cm + noise_cm, n_cm - noise_cm)
+    lo = navy_bodyfat(w_cm - noise_cm, n_cm + noise_cm)
+    noise = (hi - lo) / 2 if hi is not None and lo is not None else None
+
+    out = {"bodyfat": round(bf, 1), "d": day.isoformat(),
+           "noise": round(noise, 2) if noise else None,
+           "height_cm": HEIGHT_CM, "accuracy": 3.5}
+    if len(waist) > 1:
+        prev_day, prev_w = waist[-2]
+        if prev_day in neck_by_day:
+            was = navy_bodyfat(prev_w, neck_by_day[prev_day])
+            if was is not None:
+                out["prev"] = round(was, 1)
+                out["change"] = round(bf - was, 2)
+                out["flat"] = noise is not None and abs(bf - was) < noise
+                out["days"] = (day - prev_day).days
+    if smooth_kg:
+        lean = smooth_kg * (1 - bf / 100.0)
+        h_m = HEIGHT_CM / 100.0
+        out.update({
+            "weight_kg": round(smooth_kg, 1),
+            "fat_kg": round(smooth_kg - lean, 1),
+            "lean_kg": round(lean, 1),
+            "ffmi": round(lean / h_m ** 2 + 6.1 * (1.83 - h_m), 1),
+        })
+    return out
+
+
 def measurements(meas, noise_cm=TAPE_NOISE_CM):
     """Latest tape readings and the change since the one before.
 
@@ -1329,6 +1408,7 @@ def build(records, weights, customs, builtins, now=None, meas=None):
         "dow": dow,
         "weight": series,
         "measurements": measurements(meas),
+        "composition": composition(meas, goal.get("smooth_kg")),
         "notes": notes(m, cats, sessions),
     }
 

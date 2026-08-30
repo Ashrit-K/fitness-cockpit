@@ -347,6 +347,9 @@
       <p class="card-h">Shape ratios <span class="r" id="ratio-r">—</span></p>
       <div id="tbl-ratios"></div>
     </div>
+    <div class="card p4"><div class="kpi" id="kpi-bf"></div></div>
+    <div class="card p4"><div class="kpi" id="kpi-lean"></div></div>
+    <div class="card p4"><div class="kpi" id="kpi-ffmi"></div></div>
     <div class="card p12 p">
       <p class="card-h">Tape <span class="r" id="tape-r">—</span></p>
       <div class="tbl-scroll" id="tbl-tape"></div>
@@ -2499,6 +2502,32 @@
     function tapeDelta(n, dp) {
       return (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n).toFixed(dp || 2);
     }
+    /* the tape says more than its own sites: waist, neck and height give a
+       fat estimate, and that plus the scale gives lean mass. The estimate is
+       soft in absolute terms and tight on change, so the tiles lead with the
+       number and qualify it underneath rather than the other way round. */
+    var COMP = D.composition;
+    ["kpi-bf", "kpi-lean", "kpi-ffmi"].forEach(function (id) {
+      draw(id, function () {
+        if (!COMP) throw new Error("needs a waist and a neck on the same day");
+        if (id === "kpi-bf") {
+          kpi(id, { k: "Body fat", v: COMP.bodyfat.toFixed(1), u: "%",
+            c: COMP.change === undefined || COMP.flat ? null
+               : COMP.change < 0 ? "good" : "warn",
+            n: (COMP.change === undefined ? "first reading"
+                : COMP.flat ? "flat · inside ±" + COMP.noise.toFixed(2)
+                : tapeDelta(COMP.change) + " over " + COMP.days + "d") +
+               " · navy tape, ±" + COMP.accuracy + " absolute" });
+        } else if (id === "kpi-lean") {
+          kpi(id, { k: "Lean mass", v: COMP.lean_kg.toFixed(1), u: "kg",
+            n: COMP.fat_kg.toFixed(1) + " kg fat of " + COMP.weight_kg.toFixed(1) +
+               " kg · the half of the cut worth keeping" });
+        } else {
+          kpi(id, { k: "FFMI", v: COMP.ffmi.toFixed(1),
+            n: "normalised to 1.83 m · low twenties is a well-trained natural" });
+        }
+      });
+    });
     draw("fig-shape", function () {
       taperV("fig-shape", TAPE, TAPE.ratios);
       txt("shape-r", longDate(TAPE.rows[0].d));
