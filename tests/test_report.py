@@ -707,3 +707,31 @@ def test_missing_measurements_file_is_not_fatal():
 def test_unmeasured_sites_are_dropped_not_blank():
     m = report.measurements(meas("waist", ("2026-08-29", "34in")))
     assert [r["key"] for r in m["rows"]] == ["waist"]
+
+
+def test_next_mark_is_the_nearest_uncleared_rung_in_its_own_direction():
+    """Shoulder-to-waist climbs to its rungs; waist-to-hip descends to them."""
+    m = report.measurements(sites("2026-08-29", shoulders="45in", chest="38in",
+                                  waist="34in", hips="37in"))
+    got = by_key(m["ratios"])
+    # 1.324 climbing: 1.40 is next, none cleared
+    assert got["shoulder_waist"]["next_mark"] == 1.40
+    assert got["shoulder_waist"]["cleared"] == 0
+    # 0.919 descending: 0.95 is already cleared, 0.90 is next
+    assert got["waist_hip"]["next_mark"] == 0.90
+    assert got["waist_hip"]["cleared"] == 1
+
+
+def test_ratio_past_every_rung_has_no_next_mark():
+    m = report.measurements(sites("2026-08-29", shoulders="60in", waist="30in"))
+    row = by_key(m["ratios"])["shoulder_waist"]
+    assert row["latest"] == pytest.approx(2.0)
+    assert "next_mark" not in row
+    assert row["cleared"] == len(row["marks"])
+
+
+def test_ratio_without_a_target_keeps_no_rungs():
+    m = report.measurements(sites("2026-08-29", shoulders="45in", chest="38in"))
+    row = by_key(m["ratios"])["shoulder_chest"]
+    assert row["target"] is None and row["marks"] == []
+    assert "next_mark" not in row

@@ -67,11 +67,36 @@ TAPE_NOISE_CM = 0.25 * IN_CM
 # reference where one exists: 1.618 is the classic shoulder-to-waist physique
 # number, and 0.90 is the WHO waist-to-hip line for men. The other two have no
 # published target and are only useful read against their own history.
+# Targets revised 2026-08-30 after checking what each number actually rests on.
+# The milestone list is what makes a distant target usable: the next rung is
+# reachable, the target is not, and a gauge that only shows the target reads as
+# "no progress" for months.
+#
+#   shoulder_waist  ~1.6 is where cross-cultural attractiveness ratings peak,
+#                   and the effect is NOT linear — past ~1.6 buys nothing. The
+#                   familiar 1.618 is the golden ratio borrowed by fitness
+#                   marketing; the study usually cited for it (Hughes & Gallup)
+#                   measured shoulder-to-HIP, not shoulder-to-waist. Target set
+#                   to 1.60 rather than dressing a round number as geometry.
+#   waist_hip       The one with real evidence behind it. WHO puts men at or
+#                   above 0.90 in abdominal obesity with materially raised
+#                   metabolic risk, so 0.90 is a line to clear, not a goal, and
+#                   0.85 is the rung past it.
+#   chest_waist     Convention, not evidence. Steve Reeves' wrist-derived
+#                   formula puts the waist at 70% of the chest, which is 1.43;
+#                   his own 52/29 stage measurements were 1.79. 1.40 is the
+#                   attainable end of that range.
+#   shoulder_chest  Deliberately no target. Nothing published sets one, and
+#                   inventing a number would be worse than admitting that. It
+#                   still earns its row as a delt-versus-chest development read.
 RATIOS = [
-    ("shoulder_waist", "Shoulder : waist", "shoulders", "waist", 1.618, "up"),
-    ("chest_waist", "Chest : waist", "chest", "waist", None, "up"),
-    ("shoulder_chest", "Shoulder : chest", "shoulders", "chest", None, "up"),
-    ("waist_hip", "Waist : hip", "waist", "hips", 0.90, "down"),
+    ("shoulder_waist", "Shoulder : waist", "shoulders", "waist", 1.60, "up",
+     [1.40, 1.50, 1.60]),
+    ("chest_waist", "Chest : waist", "chest", "waist", 1.40, "up",
+     [1.20, 1.30, 1.40]),
+    ("shoulder_chest", "Shoulder : chest", "shoulders", "chest", None, "up", []),
+    ("waist_hip", "Waist : hip", "waist", "hips", 0.90, "down",
+     [0.95, 0.90, 0.85]),
 ]
 
 # Display order for the tape table: the V-taper measurements first, then the
@@ -893,7 +918,7 @@ def ratios(series, noise_cm=TAPE_NOISE_CM):
     a change inside that band is reported flat rather than as movement.
     """
     out = []
-    for key, label, num, den, target, good in RATIOS:
+    for key, label, num, den, target, good, marks in RATIOS:
         points = ratio_series(series, num, den)
         if not points:
             continue
@@ -908,6 +933,14 @@ def ratios(series, noise_cm=TAPE_NOISE_CM):
                           for d, r in points]}
         if target is not None:
             row["to_target"] = round(target - last_r, 3)
+        # the nearest rung not yet cleared, in this ratio's own direction
+        ahead = [m for m in marks if (last_r < m if good == "up" else last_r > m)]
+        if ahead:
+            nxt = min(ahead) if good == "up" else max(ahead)
+            row["next_mark"] = nxt
+            row["to_next"] = round(abs(nxt - last_r), 3)
+        row["marks"] = marks
+        row["cleared"] = len(marks) - len(ahead)
         if len(points) > 1:
             first_day, first_r = points[0]
             change = last_r - first_r

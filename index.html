@@ -800,7 +800,7 @@
      without reading a single figure. */
   function ratioGauges(host, rows) {
     var W = 1220, rowH = 56, padT = 16, padB = 12;
-    var LBL = 150, VAL = 76, R = 96;
+    var LBL = 150, VAL = 76, R = 152;
     var x0 = LBL + VAL, pw = W - x0 - R;
     var s = svg(host, W, padT + rows.length * rowH + padB);
     s.setAttribute("aria-label", "Shape ratios against their targets");
@@ -842,6 +842,19 @@
       s.appendChild(el("rect", { x: x0, y: y - 5, width: pw, height: 10, rx: 5,
         fill: "var(--grid)" }));
 
+      /* the rungs. A single distant target reads as "no progress" for months;
+         the nearest uncleared rung is the number actually worth chasing. */
+      (r.marks || []).forEach(function (m) {
+        var mx = X(m);
+        if (mx <= x0 || mx >= x0 + pw) return;
+        var cleared = r.good === "up" ? last >= m : last <= m;
+        s.appendChild(tipOn(el("line", { x1: mx, x2: mx, y1: y - 9, y2: y + 9,
+          stroke: cleared ? "var(--good)" : "var(--ink-2)", "stroke-width": 1.5,
+          "stroke-opacity": cleared ? 0.9 : 0.55 }),
+          tk("milestone " + m.toFixed(2)) +
+          tv(cleared ? "cleared" : "<b>" + Math.abs(m - last).toFixed(3) + "</b> to go")));
+      });
+
       /* the span actually travelled, coloured only once it clears the noise */
       var a = Math.min(clamp(X(first)), X(last)), b = Math.max(clamp(X(first)), X(last));
       var moved = r.change !== undefined && !r.flat;
@@ -868,8 +881,16 @@
         stroke: "var(--surface)", "stroke-width": 2 }),
         tk("now") + tv("<b>" + last.toFixed(3) + "</b> on " + longDate(r.d))));
 
+      if (r.next_mark !== undefined) {
+        s.appendChild(tipOn(el("text", { x: W - R + 8, y: y - 4, class: "tick",
+          style: "fill:var(--ink-2)" },
+          "next " + r.next_mark.toFixed(2)),
+          tk("next milestone") + tv("<b>" + r.to_next.toFixed(3) + "</b> to go · " +
+             r.cleared + " of " + r.marks.length + " cleared")));
+      }
+      var ty = r.next_mark !== undefined ? y + 12 : y + 4;
       if (r.target === null) {
-        s.appendChild(el("text", { x: W - R + 8, y: y + 4, class: "tick",
+        s.appendChild(el("text", { x: W - R + 8, y: ty, class: "tick",
           style: "fill:var(--muted)" }, "no target"));
       } else {
         var tx = X(r.target), inside = tx > x0 && tx < x0 + pw;
@@ -882,8 +903,8 @@
           s.appendChild(el("path", { d: chevron(dir > 0 ? x0 + pw - 2 : x0 + 2, y, dir),
             fill: "var(--good)" }));
         }
-        s.appendChild(tipOn(el("text", { x: W - R + 8, y: y + 4, class: "tick",
-          style: "fill:var(--good)" }, r.target.toFixed(3)),
+        s.appendChild(tipOn(el("text", { x: W - R + 8, y: ty, class: "tick",
+          style: "fill:var(--good)" }, "target " + r.target.toFixed(2)),
           tk("target") + tv("<b>" + Math.abs(r.to_target).toFixed(3) + "</b> to go" +
              (inside ? "" : "<br>off this scale — the track spans ±8 noise widths"))));
       }
