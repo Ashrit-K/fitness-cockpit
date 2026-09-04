@@ -1,6 +1,10 @@
 {
   "records": [
     {
+      "id": 1788505630257,
+      "text": "2026-09-04 07:07:10 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 4 - Day 4 \u2014 V Pull + V Press\" / week: 4 / dayInWeek: 4 / duration: 4419s / exercises: {\n  Neutral Grip Pull Up / 4x9 0kg / warmup: 2x9 0kg / target: 4x8-12 0kg @8 120s\n  Shoulder Press, Leverage Machine / 1x12 27.5kg, 1x7 34.5kg, 1x6 34.5kg / warmup: 1x12 15kg, 1x12 22.5kg / target: 1x8-12 27.5kg @8 120s, 2x8-12 34.25kg @8 120s\n  Wide Pull Up / 1x10 0kg, 2x6 0kg / target: 3x8-12 0kg @8 90s\n  Triceps Dip / 2x12 5kg, 1x8 7.5kg / target: 1x8-12 2.5kg @8 90s, 1x8-12 5kg @8 90s, 1x8-12 7.5kg @8 90s\n  Lateral Raise, Cable / 2x12 5kg, 1x9 5kg, 1x8 2.5kg, 1x8 5kg, 1x8 2.5kg, 1x8 5kg, 1x8 2.5kg / target: 2x12-16 5kg @8 75s, 6x12-16 2.5kg @8 75s\n  Side Plank / 2x1|1 0kg / target: 2x1 45s\n  Incline Walking / 1x1 0kg / target: 1x1 0kg\n}"
+    },
+    {
       "id": 1788419016598,
       "text": "2026-09-03 07:03:36 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 4 - Day 3 \u2014 H Pull + H Press\" / week: 4 / dayInWeek: 3 / duration: 5093s / exercises: {\n  Seated Row, Leverage Machine / 2x12 35kg, 2x10 35kg / warmup: 1x10 30kg, 1x6 30kg / target: 4x8-12 30kg @8 120s\n  Chest Press, Leverage Machine / 1x12 49.5kg, 2x10 49.5kg, 1x8 49.5kg / warmup: 1x12 33kg, 1x12 40kg, 1x10 47kg / target: 4x8-12 35kg @8 120s\n  Lateral Raise, Cable / 1x8 5kg, 1x12 2.5kg, 1x9 5kg, 1x8 2.5kg, 1x7 5kg, 1x9 2.5kg, 1x12 2.5kg / target: 2x12-16 5kg @8 75s, 5x12-16 2.5kg @8 75s\n  Pull Up / 1x8 0kg, 1x7 0kg, 1x6 0kg / warmup: 2x8 0kg / target: 3x8-12 0kg @8 120s\n  Reverse Lunge / 3x8 15kg / target: 3x12-16 5kg @8 75s\n  // 20min\n  Incline Walking / 1x1 0kg / target: 1x1 0kg\n}"
     },
