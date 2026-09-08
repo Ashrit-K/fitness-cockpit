@@ -1,6 +1,10 @@
 {
   "records": [
     {
+      "id": 1788852368524,
+      "text": "2026-09-08 07:26:08 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 5 - Day 2 \u2014 H Pull + V Press\" / week: 5 / dayInWeek: 2 / duration: 5095s / exercises: {\n  Neutral Grip Pull Up / 2x10 0kg, 1x8 0kg / warmup: 2x9 0kg / target: 3x8-12 0kg @8 120s\n  High Row / 1x12 35kg, 1x8 40kg, 1x9 40kg, 1x8 40kg / target: 4x8-12 17.25kg @8 90s\n  Shoulder Press, Leverage Machine / 1x12 27.5kg, 1x6 34.5kg, 1x6 32kg / warmup: 1x10 17.5kg, 1x9 27.5kg / target: 1x8-12 27.5kg @8 120s, 2x8-12 34.25kg @8 120s\n  Triceps Dip / 2x12 5kg, 1x10 7.5kg / target: 1x8-12 2.5kg @8 90s, 1x8-12 5kg @8 90s, 1x8-12 7.5kg @8 90s\n  Lateral Raise, Cable / 2x12 5kg, 1x9 5kg, 1x10 2.5kg, 1x8 5kg, 1x8 2.5kg / target: 2x12-16 5kg @8 75s, 4x12-16 2.5kg @8 75s\n  Dead Bug / 2x4 0kg / target: 2x4 0kg 15s\n  Incline Walking / 1x1 0kg / target: 1x1 0kg\n}"
+    },
+    {
       "id": 1788763699715,
       "text": "2026-09-07 06:48:19 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 5 - Day 1 \u2014 V Pull + H Press\" / week: 5 / dayInWeek: 1 / duration: 5397s / exercises: {\n  Neutral Grip Pull Up / 1x8 0kg, 3x9 0kg / warmup: 1x8 0kg, 1x9 0kg / target: 4x8-12 0kg @8 120s\n  Chest Press, Leverage Machine / 4x10 49.5kg / warmup: 1x12 28.5kg, 1x12 35.5kg, 1x12 42.5kg / target: 4x8-12 49.25kg @8 120s\n  Deficit Reverse Lunge / 4x10|10 15kg / target: 4x8-12 14kg @8 30s\n  Triceps Dip / 2x12 5kg, 1x9 7.5kg / target: 2x8-12 5kg @8 90s, 1x8-12 7.5kg @8 90s\n  Lateral Raise / 1x12 7.5kg, 1x12 5kg, 1x9 7.5kg, 1x10 5kg, 1x8 7.5kg, 1x9 5kg / target: 6x12-16 6kg @8 75s\n  Lateral Raise, Cable / 1x10 5kg, 1x10 2.5kg, 1x9 5kg, 1x10 2.5kg / target: 2x12-16 5kg @8 75s, 2x12-16 2.5kg @8 75s\n  Incline Walking / 1x1 0kg / target: 1x1 0kg\n}"
     },
