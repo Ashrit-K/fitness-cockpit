@@ -1,6 +1,10 @@
 {
   "records": [
     {
+      "id": 1789721195470,
+      "text": "2026-09-18 08:46:35 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 6 \u2014 Deload - Day 1 \u2014 V Pull + H Press\" / week: 6 / dayInWeek: 1 / duration: 3826s / exercises: {\n  Pull Up / 2x9 0kg / warmup: 2x9 0kg / target: 2x8-12 0kg @6 120s\n  Incline Chest Press / 4x12 20kg / target: 4x8-12 5kg @6 120s\n  Deficit Reverse Lunge / 2x10|10 12.5kg / target: 2x8-12 0kg @6 90s\n  Lateral Raise, Cable / 2x12 5kg / target: 2x12-16 5kg @6 75s\n  Triceps Dip / 1x12 5kg, 1x12 7.5kg / target: 1x8-12 5kg @6 90s, 1x8-12 7.5kg @6 90s\n  Bird Dog / 1x4 0kg / target: 1x4 0kg 15s\n  Incline Walking / 1x1 0kg / target: 1x1 0kg 0s\n}"
+    },
+    {
       "id": 1789197718803,
       "text": "2026-09-12 07:21:58 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 5 - Day 4 \u2014 V Pull + V Press\" / week: 5 / dayInWeek: 4 / duration: 3757s / exercises: {\n  Neutral Grip Pull Up / 1x12 0kg, 2x8 0kg / warmup: 2x12 0kg / target: 3x8-12 0kg @8 120s\n  Shoulder Press, Leverage Machine / 1x10 32kg, 1x8 32kg, 1x6 32kg / warmup: 1x12 22.5kg, 1x8 27.5kg / target: 1x8-12 27.5kg @8 120s, 2x8-12 34.25kg @8 120s\n  Lateral Raise, Cable / 3x12 5kg, 1x9 5kg, 1x7 2.5kg / target: 5x12-20 5kg @8 75s\n  Triceps Dip / 1x12 5kg, 2x12 7.5kg, 1x10 10kg / target: 2x8-12 5kg @8 90s, 1x8-12 7.5kg @8 90s, 1x8-12 10kg @8 90s\n  Leg Extension / 2x12 16kg, 1x12 26kg / target: 3x12-16 28.5kg @8 75s\n  Side Plank / 1x1|1 0kg / target: 2x1 45s\n}"
     },
