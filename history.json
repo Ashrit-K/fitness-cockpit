@@ -1,6 +1,10 @@
 {
   "records": [
     {
+      "id": 1789980942738,
+      "text": "2026-09-21 08:55:42 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 1 - Day 1 \u2014 V Pull + H Press\" / week: 1 / dayInWeek: 1 / duration: 3970s / exercises: {\n  Pull Up / 1x10 2.5kg, 1x7 2.5kg, 1x8 2.5kg / warmup: 2x10 0kg / target: 3x8-12 0kg @8 120s\n  Incline Chest Press / 1x10 22.5kg, 3x8 22.5kg / warmup: 1x12 20kg, 1x10 22.5kg / target: 4x8-12 21kg @8 120s\n  Deficit Reverse Lunge / 3x10|10 15kg, 1x9|9 15kg / target: 4x8-12 16kg @8 90s\n  Triceps Dip / 2x12 5kg, 1x7 7.5kg, 1x8 7.5kg / target: 2x8-12 5kg @8 90s, 1x8-12 7.5kg @8 90s, 1x8-12 10kg @8 90s\n  Lateral Raise, Cable / 1x16 5kg, 1x12 5kg, 1x9 5kg, 1x10 2.5kg, 1x9 5kg, 1x10 2.5kg / target: 6x12-20 5kg @8 75s\n}"
+    },
+    {
       "id": 1789899790904,
       "text": "2026-09-20 10:23:10 +00:00 / duration: 1137s / exercises: {\n  Incline Walking / 1x1 0kg / target: 1x1 0kg 0s\n}"
     },
