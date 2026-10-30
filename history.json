@@ -1,6 +1,10 @@
 {
   "records": [
     {
+      "id": 1793348105819,
+      "text": "2026-10-30 08:15:05 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 1 - Day 3 \u2014 H Pull + H Press\" / week: 1 / dayInWeek: 3 / duration: 4833s / exercises: {\n  High Row / 2x12 35kg, 1x11 35kg, 1x12 35kg / warmup: 1x12 25kg, 1x8 35kg / target: 4x8-12 30kg @8 120s\n  Chest Press, Leverage Machine / 1x12 47kg, 1x8 47kg, 2x7 47kg / warmup: 1x12 19kg, 1x12 33kg, 1x12 40kg / target: 4x8-12 47.25kg @8 120s\n  Lateral Raise, Cable / 2x15 5kg, 2x12 5kg, 1x8 2.5kg / target: 5x12-20 5kg @8 75s\n  Pull Up / 3x6 5kg / warmup: 2x8 0kg / target: 3x8-12 2.5kg @8 120s\n  Incline Walking / 1x1 0kg 1201s / target: 1x1 0kg 1200s|0s\n}"
+    },
+    {
       "id": 1793174098593,
       "text": "2026-10-28 07:54:58 +00:00 / program: \"4-Day V-Taper Full Body\" / dayName: \"Week 1 - Day 2 \u2014 H Pull + V Press\" / week: 1 / dayInWeek: 2 / duration: 4678s / exercises: {\n  Neutral Grip Pull Up / 2x8 5kg, 1x7 5kg / warmup: 2x12 0kg / target: 3x8-12 2.5kg @8 120s\n  Incline Row / 1x12 15kg, 1x9 17.5kg, 1x10 17.5kg, 1x8 17.5kg / target: 4x8-12 16kg @8 90s\n  Shoulder Press, Leverage Machine / 1x12 27.5kg, 1x6 27.5kg, 1x7 27.5kg / warmup: 2x12 22.5kg / target: 1x8-12 27.5kg @8 120s, 2x8-12 34.25kg @8 120s\n  Lying Leg Curl / 1x12 15kg, 2x12 20kg / target: 3x12-16 15kg @8 75s\n  Lateral Raise, Cable / 1x12 5kg, 1x14 5kg, 2x12 5kg / target: 4x12-20 5kg @8 75s\n  Dead Bug / 2x4 0kg / target: 2x4 0kg 15s\n  Incline Walking / 1x1 0kg 1202s / target: 1x1 0kg 1200s|0s\n}"
     },
